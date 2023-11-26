@@ -34,11 +34,15 @@ const parseWatchHistory = () => {
 
 		// Extract information and print to the console
 		const dateWatched = item.querySelector('[data-automation-id^="wh-date"]').textContent;
-		const readableDateWatched = new Date(dateWatched).toISOString().split('T')[0];
 		const title = itemDetails.querySelector('img').alt;
 		const episodeInfo = itemDetails.querySelector('[data-automation-id^=wh-episode] > div > p')
 
-		watchHistoryArray.push([readableDateWatched, itemType, title, episodeInfo ? episodeInfo.textContent.trim() : '']);
+		watchHistoryArray.push([
+			new Date(dateWatched).toISOString().split('T')[0],
+			itemType,
+			`"${title}"`,
+			episodeInfo ? `"${episodeInfo.textContent.trim()}"` : ''
+		]);
 	});
 
 	return watchHistoryArray;
