@@ -1,5 +1,5 @@
 /* 
-	Watch History Exporter for Amazon Prime Video | @jerboa88 | Public Domain
+	Watch History Exporter for Amazon Prime Video | johng.io | Public Domain
 	Export your Amazon Prime Video watch history as a CSV file.
 	
 	Instructions: 
@@ -10,15 +10,15 @@
 
 
 // Parse the watch history and return an array of arrays
-const parseWatchHistory = () => { 
+const parseWatchHistory = () => {
 	// Initialize an empty array to store the watch history
 	const watchHistoryArray = [];
 
 	// Select all list items within the watch history
 	const watchHistoryItems = document.querySelectorAll('div[data-automation-id=activity-history-items] > ul > li');
 
-	watchHistoryItems.forEach(item => {
-		const itemDetails = item.querySelector('ul > li')
+	for (const item of watchHistoryItems) {
+		const itemDetails = item.querySelector('ul > li');
 		const episodesWatchedCheckbox = itemDetails.querySelector('[type="checkbox"]');
 		let itemType = 'Movie';
 
@@ -35,7 +35,7 @@ const parseWatchHistory = () => {
 		// Extract information and print to the console
 		const dateWatched = item.querySelector('[data-automation-id^="wh-date"]').textContent;
 		const title = itemDetails.querySelector('img').alt;
-		const episodeInfo = itemDetails.querySelector('[data-automation-id^=wh-episode] > div > p')
+		const episodeInfo = itemDetails.querySelector('[data-automation-id^=wh-episode] > div > p');
 
 		watchHistoryArray.push([
 			new Date(dateWatched).toISOString().split('T')[0],
@@ -43,32 +43,41 @@ const parseWatchHistory = () => {
 			`"${title}"`,
 			episodeInfo ? `"${episodeInfo.textContent.trim()}"` : ''
 		]);
-	});
+	}
 
 	return watchHistoryArray;
 };
 
 
 // Force lazy loading of the watch history by scrolling to the bottom of the page
-const forceLoadWatchHistory = () => {
-	// TODO: Not implemented. For now, scroll to the bottom of the page manually until all items are loaded
-}
+const forceLoadWatchHistory = async () => {
+	return new Promise((resolve) => {
+		const autoScrollInterval = setInterval(() => {
+			if (!document.querySelector("div[data-automation-id=activity-history-items] > div > noscript")) {
+				clearInterval(autoScrollInterval);
+				resolve();
+			}
+
+			window.scrollTo(0, document.body.scrollHeight);
+		}, 500);
+	});
+};
 
 
 // Download the watch history as a CSV file
-const downloadCSV = (inputArray) => {
+const downloadCsv = (inputArray) => {
 	const mimeTypePrefix = 'data:text/csv;charset=utf-8,';
 	const headers = ['Date Watched', 'Type', 'Title', 'Episode'];
 	const csvContent = `${mimeTypePrefix}${headers.join(', ')}\n${inputArray.map(e => e.join(', ')).join('\n')}`;
 
 	window.open(encodeURI(csvContent));
-}
+};
 
 
 // Entry point
-const main = () => {
-	forceLoadWatchHistory();
-	downloadCSV(parseWatchHistory());
+const main = async () => {
+	await forceLoadWatchHistory();
+	downloadCsv(parseWatchHistory());
 };
 
 
