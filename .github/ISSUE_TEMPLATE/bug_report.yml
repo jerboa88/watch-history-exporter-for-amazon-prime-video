@@ -14,37 +14,28 @@ body:
       required: true
     - label: I have searched for existing issues
       required: true
+- type: input
+  attributes:
+    label: Operating System
+    description: What OS and OS version are you using?
+    placeholder: "Ubuntu 20.04"
+    required: true
+- type: input
+  attributes:
+    label: Browser
+    description: What browser and browser version are you using?
+    placeholder: "Chrome 131"
+    required: true
 - type: textarea
   attributes:
     label: What is the issue?
-    description: A concise description of what you're experiencing.
-  validations:
-    required: true
-- type: textarea
-  attributes:
-    label: Steps To Reproduce
-    description: Steps to reproduce the behavior.
-    placeholder: |
-      1. In this environment...
-      2. Run '...'
-      3. See error...
-  validations:
-    required: true
-- type: textarea
-  attributes:
-    label: Environment
     description: |
-      examples:
-        - **OS**: Ubuntu 20.04
-        - **Browser**: Chrome 131
-    value: |
-        - OS:
-        - Browser:
-    render: markdown
-- type: textarea
-  attributes:
-    label: Logs & Screenshots
-    description: |
-      Please attach a log file or screenshot of the console so I can see what is happening. You can save a log of the devtools console by right-clicking anywhere and choosing "Save as...".
+      Please include the following details:
+        - A description of the issue you're experiencing
+        - Steps to reproduce the issue
+        - A log file or screenshot of the console so I can see what is happening. You can save a log of the devtools console by right-clicking anywhere and choosing "Save as...".
 
-      Tip: You can attach files by clicking this area to highlight it and then dragging files in.
+      > [!TIP]
+      > You can attach files by clicking this area to highlight it and then dragging files in.
+  validations:
+    required: true
