@@ -1,5 +1,7 @@
 <!-- Project Header -->
 <div align="center">
+  <img class="projectLogo" src="screenshot.png" alt="Project logo" title="Project logo" width="512">
+  
   <h1 class="projectName">Watch History Exporter for Amazon Prime Video</h1>
 
   <p class="projectBadges">
@@ -23,12 +25,12 @@
 This script runs in your browser and allows you to save your watch history from [Amazon Prime Video] to a CSV file, where it can be processed further or imported into other platforms.
 
 ## Usage
-You can run the script by copying the code in [watch-history-exporter-for-amazon-prime-video.js] and pasting it into your browser's devtools console.
+You can run the script by going to [primevideo.com/settings/watch-history], copying the code in [watch-history-exporter-for-amazon-prime-video.js], and pasting it into your browser's devtools console.
 
 > [!CAUTION]
 > For security reasons, I do not recommend running scripts from the internet unless you understand what they are doing. If you are not a developer, I recommend reading the comments in the code and/or asking a LLM like [ChatGPT] to explain it to you.
 
-**Detailed steps:**
+**Detailed instructions:**
  1. Open [primevideo.com/settings/watch-history] in your browser
  2. Open your browser's devtools console ([how?])
  3. Copy the code in [watch-history-exporter-for-amazon-prime-video.js] and paste it into the console. If this doesn't work or you see a warning message about pasting, see the [FAQ].
