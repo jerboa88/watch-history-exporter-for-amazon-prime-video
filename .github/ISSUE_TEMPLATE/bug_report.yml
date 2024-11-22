@@ -19,12 +19,14 @@ body:
     label: Operating System
     description: What OS and OS version are you using?
     placeholder: "Ubuntu 20.04"
+  validations:
     required: true
 - type: input
   attributes:
     label: Browser
     description: What browser and browser version are you using?
     placeholder: "Chrome 131"
+  validations:
     required: true
 - type: textarea
   attributes:
