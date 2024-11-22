@@ -1,17 +1,3 @@
-/*
-	Watch History Exporter for Amazon Prime Video | johng.io | Public Domain
-	Export your Amazon Prime Video watch history as a CSV file.
-
-	Instructions:
-		1. Open https://www.primevideo.com/settings/watch-history in your browser
-		2. Copy this script into the devtools console and run it
-
-	Notes:
-		- Some browsers prevent you from pasting code in the console because it could be malicious. If this happens, follow the instructions in the console to re-enable pasting
-		- If you are not prompted to save a file, make sure "Pop-ups and redirects" and "Automatic downloads" are enabled for www.primevideo.com in your browser
-*/
-
-
 (() => {
 	// Print an informational message to the console
 	const log = (msg, showPrefix = true, startGroup = false) => {
@@ -63,6 +49,7 @@
 			log(`[${itemType}] ${title} `, false);
 		}
 
+		console.groupEnd();
 		console.groupEnd();
 
 		return watchHistoryArray;
