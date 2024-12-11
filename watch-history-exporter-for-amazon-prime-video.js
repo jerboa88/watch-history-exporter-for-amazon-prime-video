@@ -12,6 +12,18 @@
 		logFunc(...prefixArray, msg);
 	};
 
+	// Add a movie or episode to the array
+	const addItem = (watchHistoryArray, dateWatched, title, episodeTitle) => {
+		watchHistoryArray.push([
+			new Date(dateWatched).toISOString().split('T')[0],
+			episodeTitle ? 'Series' : 'Movie',
+			`"${title}"`,
+			episodeTitle ? `"${episodeTitle}"` : '',
+		]);
+
+		return watchHistoryArray;
+	};
+
 	// Parse the watch history and return an array of arrays
 	const parseWatchHistory = () => {
 		log('Parsing watch history...', true, true);
@@ -30,35 +42,38 @@
 			const itemDetails = item.querySelector('ul > li');
 			const episodesWatchedCheckbox =
 				itemDetails.querySelector('[type="checkbox"]');
-			let itemType = 'Movie';
-
-			// Click the 'Episodes watched' checkbox if it exists to get the episode information
-			if (episodesWatchedCheckbox) {
-				itemType = 'Series';
-
-				// A click event is required to load the episode information (checking from DOM doesn't work)
-				if (!episodesWatchedCheckbox.checked) {
-					episodesWatchedCheckbox.click();
-				}
-			}
-
-			// Extract information and print to the console
 			const dateWatched = item.querySelector(
 				'[data-automation-id^="wh-date"]',
 			).textContent;
 			const title = itemDetails.querySelector('img').alt;
-			const episodeInfo = itemDetails.querySelector(
-				'[data-automation-id^=wh-episode] > div > p',
-			);
 
-			watchHistoryArray.push([
-				new Date(dateWatched).toISOString().split('T')[0],
-				itemType,
-				`"${title}"`,
-				episodeInfo ? `"${episodeInfo.textContent.trim()}"` : '',
-			]);
+			// If the 'Episodes watched' checkbox exists, it's a series
+			// Othwerwise, it's a movie
+			if (episodesWatchedCheckbox) {
+				log(`[Series] ${title}`, false, true);
 
-			log(`[${itemType}] ${title} `, false);
+				// Click the 'Episodes watched' checkbox if it exists to get the episode information
+				if (!episodesWatchedCheckbox.checked) {
+					// A click event is required to load the episode information (checking from DOM doesn't work)
+					episodesWatchedCheckbox.click();
+				}
+
+				const episodeItems = itemDetails.querySelectorAll(
+					'[data-automation-id^=wh-episode] > div > p',
+				);
+
+				for (const episodeItem of episodeItems) {
+					const episodeTitle = episodeItem?.textContent?.trim();
+
+					log(episodeTitle, false);
+					addItem(watchHistoryArray, dateWatched, title, episodeTitle);
+				}
+
+				console.groupEnd();
+			} else {
+				log(`[Movie] ${title}`, false);
+				addItem(watchHistoryArray, dateWatched, title);
+			}
 		}
 
 		console.groupEnd();
