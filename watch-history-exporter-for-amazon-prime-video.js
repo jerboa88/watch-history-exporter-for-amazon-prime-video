@@ -1,4 +1,25 @@
 (() => {
+	// Delimiters for the CSV file
+	const DELIMITER = {
+		STRING: '"',
+		FIELD: ',',
+		RECORD: '\n',
+	};
+
+	//  Column names for the CSV file
+	const COLUMN_NAME = {
+		DATE_WATCHED: 'Date Watched',
+		TYPE: 'Type',
+		TITLE: 'Title',
+		EPISODE_TITLE: 'Episode',
+	};
+
+	//  Values for the TYPE column in the CSV file
+	const MEDIA_TYPE_NAME = {
+		SERIES: 'Series',
+		MOVIE: 'Movie',
+	};
+
 	// Print an informational message to the console
 	const log = (msg, showPrefix = true, startGroup = false) => {
 		const logFunc = startGroup ? console.group : console.info;
@@ -14,11 +35,22 @@
 
 	// Add a movie or episode to the array
 	const addItem = (watchHistoryArray, dateWatched, title, episodeTitle) => {
+		const formattedDateWatched = new Date(dateWatched)
+			.toISOString()
+			.split('T')[0];
+		const mediaType = episodeTitle
+			? MEDIA_TYPE_NAME.SERIES
+			: MEDIA_TYPE_NAME.MOVIE;
+		const formattedTitle = `${DELIMITER.STRING}${title}${DELIMITER.STRING}`;
+		const formattedEpisodeTitle = episodeTitle
+			? `${DELIMITER.STRING}${episodeTitle}${DELIMITER.STRING}`
+			: '';
+
 		watchHistoryArray.push([
-			new Date(dateWatched).toISOString().split('T')[0],
-			episodeTitle ? 'Series' : 'Movie',
-			`"${title}"`,
-			episodeTitle ? `"${episodeTitle}"` : '',
+			formattedDateWatched,
+			mediaType,
+			formattedTitle,
+			formattedEpisodeTitle,
 		]);
 
 		return watchHistoryArray;
@@ -26,57 +58,64 @@
 
 	// Parse the watch history and return an array of arrays
 	const parseWatchHistory = () => {
-		log('Parsing watch history...', true, true);
+		log('Parsing watch history... Items found:', true, true);
 
 		// Initialize an empty array to store the watch history
 		const watchHistoryArray = [];
 
 		// Select all list items within the watch history
-		const watchHistoryItems = document.querySelectorAll(
+		const dateSections = document.querySelectorAll(
 			'div[data-automation-id=activity-history-items] > ul > li',
 		);
 
-		log('Items found:', false, true);
-
-		for (const item of watchHistoryItems) {
-			const itemDetails = item.querySelector('ul > li');
-			const episodesWatchedCheckbox =
-				itemDetails.querySelector('[type="checkbox"]');
-			const dateWatched = item.querySelector(
+		// Loop over date sections
+		for (const dateSection of dateSections) {
+			const mediaSections = dateSection.querySelectorAll('ul > li');
+			const dateWatched = dateSection.querySelector(
 				'[data-automation-id^="wh-date"]',
 			).textContent;
-			const title = itemDetails.querySelector('img').alt;
 
-			// If the 'Episodes watched' checkbox exists, it's a series
-			// Othwerwise, it's a movie
-			if (episodesWatchedCheckbox) {
-				log(`[Series] ${title}`, false, true);
+			log(dateWatched, false, true);
 
-				// Click the 'Episodes watched' checkbox if it exists to get the episode information
-				if (!episodesWatchedCheckbox.checked) {
-					// A click event is required to load the episode information (checking from DOM doesn't work)
-					episodesWatchedCheckbox.click();
+			// Loop over media watched for each date
+			for (const mediaSection of mediaSections) {
+				const episodesWatchedCheckbox =
+					mediaSection.querySelector('[type="checkbox"]');
+				const title = mediaSection.querySelector('img').alt;
+
+				// If the 'Episodes watched' checkbox exists, it's a series
+				// Otherwise, it's a movie
+				if (episodesWatchedCheckbox) {
+					log(`[${MEDIA_TYPE_NAME.SERIES}] ${title}`, false, true);
+
+					// Click the 'Episodes watched' checkbox if it exists to get the episode information
+					if (!episodesWatchedCheckbox.checked) {
+						// A click event is required to load the episode information (checking from DOM doesn't work)
+						episodesWatchedCheckbox.click();
+					}
+
+					const episodeSections = mediaSection.querySelectorAll(
+						'[data-automation-id^=wh-episode] > div > p',
+					);
+
+					// Loop over episodes watched for each series
+					for (const episodeSection of episodeSections) {
+						const episodeTitle = episodeSection?.textContent?.trim();
+
+						log(episodeTitle, false);
+						addItem(watchHistoryArray, dateWatched, title, episodeTitle);
+					}
+
+					console.groupEnd();
+				} else {
+					log(`[${MEDIA_TYPE_NAME.MOVIE}] ${title}`, false);
+					addItem(watchHistoryArray, dateWatched, title);
 				}
-
-				const episodeItems = itemDetails.querySelectorAll(
-					'[data-automation-id^=wh-episode] > div > p',
-				);
-
-				for (const episodeItem of episodeItems) {
-					const episodeTitle = episodeItem?.textContent?.trim();
-
-					log(episodeTitle, false);
-					addItem(watchHistoryArray, dateWatched, title, episodeTitle);
-				}
-
-				console.groupEnd();
-			} else {
-				log(`[Movie] ${title}`, false);
-				addItem(watchHistoryArray, dateWatched, title);
 			}
+
+			console.groupEnd();
 		}
 
-		console.groupEnd();
 		console.groupEnd();
 
 		return watchHistoryArray;
@@ -111,9 +150,12 @@
 		);
 		console.groupEnd();
 
-		const mimeTypePrefix = 'data:text/csv;charset=utf-8,';
-		const headers = ['Date Watched', 'Type', 'Title', 'Episode'];
-		const csvContent = `${mimeTypePrefix}${headers.join(', ')}\n${inputArray.map((e) => e.join(', ')).join('\n')}`;
+		const mimeTypeString = 'data:text/csv;charset=utf-8,';
+		const columnNamesString = Object.values(COLUMN_NAME).join(DELIMITER.FIELD);
+		const dataRowsString = inputArray
+			.map((item) => item.join(DELIMITER.FIELD))
+			.join(DELIMITER.RECORD);
+		const csvContent = `${mimeTypeString}${columnNamesString}${DELIMITER.RECORD}${dataRowsString}`;
 
 		window.open(encodeURI(csvContent));
 	};
