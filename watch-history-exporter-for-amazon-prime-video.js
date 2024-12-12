@@ -150,14 +150,12 @@
 		);
 		console.groupEnd();
 
-		const mimeTypeString = 'data:text/csv;charset=utf-8,';
-		const columnNamesString = Object.values(COLUMN_NAME).join(DELIMITER.FIELD);
-		const dataRowsString = inputArray
+		const csvData = [Object.values(COLUMN_NAME), ...inputArray]
 			.map((item) => item.join(DELIMITER.FIELD))
 			.join(DELIMITER.RECORD);
-		const csvContent = `${mimeTypeString}${columnNamesString}${DELIMITER.RECORD}${dataRowsString}`;
+		const csvDataUrl = `data:text/csv;charset=utf-8,${encodeURIComponent(csvData)}`;
 
-		window.open(encodeURI(csvContent));
+		window.open(csvDataUrl);
 	};
 
 	// Entry point
