@@ -122,7 +122,7 @@
 
 		// Loop over date sections
 		for (const dateSection of dateSections) {
-			const mediaSections = dateSection.querySelectorAll('ul > li');
+			const mediaSections = dateSection.querySelectorAll('& > ul > li');
 			const dateWatched = dateSection.querySelector(
 				'[data-automation-id^="wh-date"]',
 			).textContent;
