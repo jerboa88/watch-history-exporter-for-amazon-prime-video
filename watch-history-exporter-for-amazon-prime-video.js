@@ -133,9 +133,7 @@
 			for (const mediaSection of mediaSections) {
 				const episodesWatchedCheckbox =
 					mediaSection.querySelector('[type="checkbox"]');
-				const title = mediaSection.querySelector('img')
-					? mediaSection.querySelector('img').alt
-					: null;
+				const title = mediaSection.querySelector('img').alt;
 
 				// If the 'Episodes watched' checkbox exists, it's a series
 				// Otherwise, it's a movie
@@ -155,18 +153,13 @@
 					// Loop over episodes watched for each series
 					for (const episodeSection of episodeSections) {
 						const episodeTitle = episodeSection?.textContent?.trim();
-						if (!episodeTitle) {
-							continue;
-						}
+
 						log(episodeTitle, false);
 						addItem(watchHistoryArray, dateWatched, title, episodeTitle);
 					}
 
 					console.groupEnd();
 				} else {
-					if (!title) {
-						continue;
-					}
 					log(`[${MEDIA_TYPE_NAME.MOVIE}] ${title}`, false);
 					addItem(watchHistoryArray, dateWatched, title);
 				}
