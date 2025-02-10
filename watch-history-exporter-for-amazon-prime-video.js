@@ -1,20 +1,32 @@
 function germanDateToISO(germanDate) {
-    const months = {
-        "Januar": 0, "Februar": 1, "März": 2, "April": 3, "Mai": 4, "Juni": 5,
-        "Juli": 6, "August": 7, "September": 8, "Oktober": 9, "November": 10, "Dezember": 11
-    };
+	const months = {
+		Januar: 0,
+		Februar: 1,
+		März: 2,
+		April: 3,
+		Mai: 4,
+		Juni: 5,
+		Juli: 6,
+		August: 7,
+		September: 8,
+		Oktober: 9,
+		November: 10,
+		Dezember: 11,
+	};
 
-    const dateParts = germanDate.match(/^(\d{1,2})\. ([A-Za-zäöüÄÖÜß]+) (\d{4})$/);
-    if (!dateParts) throw new Error("Invalid German date format");
+	const dateParts = germanDate.match(
+		/^(\d{1,2})\. ([A-Za-zäöüÄÖÜß]+) (\d{4})$/,
+	);
+	if (!dateParts) throw new Error('Invalid German date format');
 
-    const day = parseInt(dateParts[1], 10);
-    const month = months[dateParts[2]];
-    const year = parseInt(dateParts[3], 10);
+	const day = parseInt(dateParts[1], 10);
+	const month = months[dateParts[2]];
+	const year = parseInt(dateParts[3], 10);
 
-    if (month === undefined) throw new Error("Invalid month name");
+	if (month === undefined) throw new Error('Invalid month name');
 
-    const date = new Date(Date.UTC(year, month, day));
-    return date.toISOString();
+	const date = new Date(Date.UTC(year, month, day));
+	return date.toISOString();
 }
 
 (() => {
@@ -56,15 +68,14 @@ function germanDateToISO(germanDate) {
 	const addItem = (watchHistoryArray, dateWatched, title, episodeTitle) => {
 		// const formattedDateWatched = new Date(dateWatched)
 		//	.toISOString()
-		const formattedDateWatched = germanDateToISO(dateWatched)
-			.split('T')[0];
+		const formattedDateWatched = germanDateToISO(dateWatched).split('T')[0];
 		const mediaType = episodeTitle
 			? MEDIA_TYPE_NAME.SERIES
 			: MEDIA_TYPE_NAME.MOVIE;
 		const formattedTitle = `${DELIMITER.STRING}${title}${DELIMITER.STRING}`;
 		const formattedEpisodeTitle = episodeTitle
 			? `${DELIMITER.STRING}${episodeTitle}${DELIMITER.STRING}`
-			: ''; 
+			: '';
 
 		watchHistoryArray.push([
 			formattedDateWatched,
@@ -101,7 +112,9 @@ function germanDateToISO(germanDate) {
 			for (const mediaSection of mediaSections) {
 				const episodesWatchedCheckbox =
 					mediaSection.querySelector('[type="checkbox"]');
-				const title = (mediaSection.querySelector('img')) ? mediaSection.querySelector("img").alt : null;
+				const title = mediaSection.querySelector('img')
+					? mediaSection.querySelector('img').alt
+					: null;
 
 				// If the 'Episodes watched' checkbox exists, it's a series
 				// Otherwise, it's a movie
@@ -121,14 +134,18 @@ function germanDateToISO(germanDate) {
 					// Loop over episodes watched for each series
 					for (const episodeSection of episodeSections) {
 						const episodeTitle = episodeSection?.textContent?.trim();
-						if (!episodeTitle) { continue; }
+						if (!episodeTitle) {
+							continue;
+						}
 						log(episodeTitle, false);
 						addItem(watchHistoryArray, dateWatched, title, episodeTitle);
 					}
 
 					console.groupEnd();
 				} else {
-					if (!title) { continue; }
+					if (!title) {
+						continue;
+					}
 					log(`[${MEDIA_TYPE_NAME.MOVIE}] ${title}`, false);
 					addItem(watchHistoryArray, dateWatched, title);
 				}
