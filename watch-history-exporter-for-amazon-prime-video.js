@@ -1,34 +1,3 @@
-function germanDateToISO(germanDate) {
-	const months = {
-		Januar: 0,
-		Februar: 1,
-		März: 2,
-		April: 3,
-		Mai: 4,
-		Juni: 5,
-		Juli: 6,
-		August: 7,
-		September: 8,
-		Oktober: 9,
-		November: 10,
-		Dezember: 11,
-	};
-
-	const dateParts = germanDate.match(
-		/^(\d{1,2})\. ([A-Za-zäöüÄÖÜß]+) (\d{4})$/,
-	);
-	if (!dateParts) throw new Error('Invalid German date format');
-
-	const day = parseInt(dateParts[1], 10);
-	const month = months[dateParts[2]];
-	const year = parseInt(dateParts[3], 10);
-
-	if (month === undefined) throw new Error('Invalid month name');
-
-	const date = new Date(Date.UTC(year, month, day));
-	return date.toISOString();
-}
-
 (() => {
 	// Delimiters for the CSV file
 	const DELIMITER = {
@@ -62,6 +31,39 @@ function germanDateToISO(germanDate) {
 			: [];
 
 		logFunc(...prefixArray, msg);
+	};
+
+	const germanDateToISO = (germanDate) => {
+		const months = {
+			Januar: 0,
+			Februar: 1,
+			März: 2,
+			April: 3,
+			Mai: 4,
+			Juni: 5,
+			Juli: 6,
+			August: 7,
+			September: 8,
+			Oktober: 9,
+			November: 10,
+			Dezember: 11,
+		};
+
+		const dateParts = germanDate.match(
+			/^(\d{1,2})\. ([A-Za-zäöüÄÖÜß]+) (\d{4})$/,
+		);
+
+		if (!dateParts) throw new Error('Invalid German date format');
+
+		const day = Number.parseInt(dateParts[1], 10);
+		const month = months[dateParts[2]];
+		const year = Number.parseInt(dateParts[3], 10);
+
+		if (month === undefined) throw new Error('Invalid German month name');
+
+		const date = new Date(Date.UTC(year, month, day));
+
+		return date.toISOString();
 	};
 
 	// Add a movie or episode to the array
