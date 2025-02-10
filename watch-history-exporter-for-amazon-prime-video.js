@@ -33,6 +33,10 @@
 		logFunc(...prefixArray, msg);
 	};
 
+	// Parse an English date string (e.g. "December 14, 2021") into a Date object
+	const englishDateToISO = (englishDateString) => new Date(englishDateString);
+
+	// Parse a German date string (e.g. "14. Dezember 2021") into a Date object
 	const germanDateToISO = (germanDate) => {
 		const months = {
 			Januar: 0,
@@ -63,14 +67,29 @@
 
 		const date = new Date(Date.UTC(year, month, day));
 
-		return date.toISOString();
+		return date;
+	};
+
+	// Convert a localized date string to an ISO date string
+	const toIsoDateString = (dateString) => {
+		const locale = document.documentElement.lang;
+		const date = {
+			'de-de': germanDateToISO,
+			'en-us': englishDateToISO,
+		}[locale](dateString);
+
+		if (!date) {
+			throw new Error(
+				'Invalid date format. Try changing the language of your Amazon Prime Video account to English',
+			);
+		}
+
+		return date.toISOString().split('T')[0];
 	};
 
 	// Add a movie or episode to the array
 	const addItem = (watchHistoryArray, dateWatched, title, episodeTitle) => {
-		// const formattedDateWatched = new Date(dateWatched)
-		//	.toISOString()
-		const formattedDateWatched = germanDateToISO(dateWatched).split('T')[0];
+		const formattedDateWatched = toIsoDateString(dateWatched);
 		const mediaType = episodeTitle
 			? MEDIA_TYPE_NAME.SERIES
 			: MEDIA_TYPE_NAME.MOVIE;
