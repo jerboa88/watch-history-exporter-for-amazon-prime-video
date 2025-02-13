@@ -1,0 +1,22 @@
+name: 💬 Question
+description: Ask a question about the project
+title: "💬 <title>"
+labels: ["💬 question", "⏰ new"]
+body:
+- type: checkboxes
+  attributes:
+    label: Are you sure this is a new question?
+    description: Please check that this question is not answered in the README and that an issue doesn't exist already for it.
+    options:
+    - label: I have read the usage instructions
+      required: true
+    - label: I have read the FAQ
+      required: true
+    - label: I have searched for existing issues
+      required: true
+- type: textarea
+  attributes:
+    label: Question
+    description: Ask your question here.
+  validations:
+    required: true
