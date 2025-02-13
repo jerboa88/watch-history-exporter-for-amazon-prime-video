@@ -39,25 +39,24 @@
 		logFunc(...prefixArray, msg);
 	};
 
+	// Get a list of long month names for a given language
+	// Based on code by Maksim (https://dev.to/pretaporter/how-to-get-month-list-in-your-language-4lfb)
+	function getMonthNames(languageTag) {
+		const formatter = new Intl.DateTimeFormat(languageTag, { month: 'long' });
+
+		return Object.fromEntries(
+			[...Array(12).keys()]
+				.map((monthIndex) => formatter.format(new Date(2025, monthIndex)))
+				.map((key, index) => [key, index]),
+		);
+	}
+
 	// Parse an English date string (e.g. "December 14, 2021") into a Date object
 	const englishDateToISO = (englishDateString) => new Date(englishDateString);
 
 	// Parse a German date string (e.g. "14. Dezember 2021") into a Date object
 	const germanDateToISO = (germanDate) => {
-		const months = {
-			Januar: 0,
-			Februar: 1,
-			März: 2,
-			April: 3,
-			Mai: 4,
-			Juni: 5,
-			Juli: 6,
-			August: 7,
-			September: 8,
-			Oktober: 9,
-			November: 10,
-			Dezember: 11,
-		};
+		const months = getMonthNames('de-de');
 
 		const dateParts = germanDate.match(
 			/^(\d{1,2})\. ([A-Za-zäöüÄÖÜß]+) (\d{4})$/,
@@ -78,11 +77,11 @@
 
 	// Convert a localized date string to an ISO date string
 	const toIsoDateString = (dateString) => {
-		const locale = document.documentElement.lang;
+		const languageTag = document.documentElement.lang;
 		const date = {
 			'de-de': germanDateToISO,
 			'en-us': englishDateToISO,
-		}[locale](dateString);
+		}[languageTag](dateString);
 
 		if (!date) {
 			throw new Error(
@@ -222,8 +221,11 @@
 
 	// Script entry point
 	log('Script started');
-	const locale = document.documentElement.lang;
-	const i18n = I18N[locale] ?? I18N['en-us'];
+	const languageTag = document.documentElement.lang;
+	const i18n = {
+		...(I18N[languageTag] ?? I18N['en-us']),
+		monthNames: getMonthNames(languageTag),
+	};
 
 	await forceLoadWatchHistory();
 	downloadCsv(parseWatchHistory());
