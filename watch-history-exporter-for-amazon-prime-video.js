@@ -1,23 +1,21 @@
-(() => {
+(async () => {
 	// Delimiters for the CSV file
 	const DELIMITER = {
-		STRING: '"',
-		FIELD: ',',
-		RECORD: '\n',
+		string: '"',
+		field: ',',
+		record: '\n',
 	};
 
-	//  Column names for the CSV file
-	const COLUMN_NAME = {
-		DATE_WATCHED: 'Date Watched',
-		TYPE: 'Type',
-		TITLE: 'Title',
-		EPISODE_TITLE: 'Episode',
-	};
-
-	//  Values for the TYPE column in the CSV file
-	const MEDIA_TYPE_NAME = {
-		SERIES: 'Series',
-		MOVIE: 'Movie',
+	// Translated strings
+	const I18N = {
+		'en-us': {
+			date_watched: 'Date Watched',
+			episode_title: 'Episode',
+			movie: 'Movie',
+			series: 'Series',
+			title: 'Title',
+			type: 'Type',
+		},
 	};
 
 	// Print an informational message to the console
@@ -90,12 +88,10 @@
 	// Add a movie or episode to the array
 	const addItem = (watchHistoryArray, dateWatched, title, episodeTitle) => {
 		const formattedDateWatched = toIsoDateString(dateWatched);
-		const mediaType = episodeTitle
-			? MEDIA_TYPE_NAME.SERIES
-			: MEDIA_TYPE_NAME.MOVIE;
-		const formattedTitle = `${DELIMITER.STRING}${title}${DELIMITER.STRING}`;
+		const mediaType = episodeTitle ? i18n.series : i18n.movie;
+		const formattedTitle = `${DELIMITER.string}${title}${DELIMITER.string}`;
 		const formattedEpisodeTitle = episodeTitle
-			? `${DELIMITER.STRING}${episodeTitle}${DELIMITER.STRING}`
+			? `${DELIMITER.string}${episodeTitle}${DELIMITER.string}`
 			: '';
 
 		watchHistoryArray.push([
@@ -138,7 +134,7 @@
 				// If the 'Episodes watched' checkbox exists, it's a series
 				// Otherwise, it's a movie
 				if (episodesWatchedCheckbox) {
-					log(`[${MEDIA_TYPE_NAME.SERIES}] ${title}`, false, true);
+					log(`[${i18n.series}] ${title}`, false, true);
 
 					// Click the 'Episodes watched' checkbox if it exists to get the episode information
 					if (!episodesWatchedCheckbox.checked) {
@@ -160,7 +156,7 @@
 
 					console.groupEnd();
 				} else {
-					log(`[${MEDIA_TYPE_NAME.MOVIE}] ${title}`, false);
+					log(`[${i18n.movie}] ${title}`, false);
 					addItem(watchHistoryArray, dateWatched, title);
 				}
 			}
@@ -202,21 +198,26 @@
 		);
 		console.groupEnd();
 
-		const csvData = [Object.values(COLUMN_NAME), ...inputArray]
-			.map((item) => item.join(DELIMITER.FIELD))
-			.join(DELIMITER.RECORD);
+		const columnNames = [
+			i18n.date_watched,
+			i18n.type,
+			i18n.title,
+			i18n.episode_title,
+		];
+		const csvData = [columnNames, ...inputArray]
+			.map((item) => item.join(DELIMITER.field))
+			.join(DELIMITER.record);
 		const csvDataUrl = `data:text/csv;charset=utf-8,${encodeURIComponent(csvData)}`;
 
 		window.open(csvDataUrl);
 	};
 
-	// Entry point
-	const main = async () => {
-		log('Script started');
-		await forceLoadWatchHistory();
-		downloadCsv(parseWatchHistory());
-		log('Script finished');
-	};
+	// Script entry point
+	log('Script started');
 
-	return main();
+	const i18n = I18N['en-us'];
+
+	await forceLoadWatchHistory();
+	downloadCsv(parseWatchHistory());
+	log('Script finished');
 })();
