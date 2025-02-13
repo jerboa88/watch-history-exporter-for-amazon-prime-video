@@ -93,8 +93,13 @@
 	};
 
 	// Add a movie or episode to the array
-	const addItem = (watchHistoryArray, dateWatched, title, episodeTitle) => {
-		const formattedDateWatched = toIsoDateString(dateWatched);
+	const addItem = (
+		watchHistoryArray,
+		dateWatchedString,
+		title,
+		episodeTitle,
+	) => {
+		const isoDateWatchedString = toIsoDateString(dateWatchedString);
 		const mediaType = episodeTitle ? i18n.series : i18n.movie;
 		const formattedTitle = `${DELIMITER.string}${title}${DELIMITER.string}`;
 		const formattedEpisodeTitle = episodeTitle
@@ -102,7 +107,7 @@
 			: '';
 
 		watchHistoryArray.push([
-			formattedDateWatched,
+			isoDateWatchedString,
 			mediaType,
 			formattedTitle,
 			formattedEpisodeTitle,
@@ -126,11 +131,11 @@
 		// Loop over date sections
 		for (const dateSection of dateSections) {
 			const mediaSections = dateSection.querySelectorAll('& > ul > li');
-			const dateWatched = dateSection.querySelector(
+			const dateWatchedString = dateSection.querySelector(
 				'[data-automation-id^="wh-date"]',
 			).textContent;
 
-			log(dateWatched, false, true);
+			log(dateWatchedString, false, true);
 
 			// Loop over media watched for each date
 			for (const mediaSection of mediaSections) {
@@ -158,13 +163,13 @@
 						const episodeTitle = episodeSection?.textContent?.trim();
 
 						log(episodeTitle, false);
-						addItem(watchHistoryArray, dateWatched, title, episodeTitle);
+						addItem(watchHistoryArray, dateWatchedString, title, episodeTitle);
 					}
 
 					console.groupEnd();
 				} else {
 					log(`[${i18n.movie}] ${title}`, false);
-					addItem(watchHistoryArray, dateWatched, title);
+					addItem(watchHistoryArray, dateWatchedString, title);
 				}
 			}
 
