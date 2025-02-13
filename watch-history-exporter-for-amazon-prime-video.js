@@ -6,8 +6,16 @@
 		record: '\n',
 	};
 
-	// Translated strings
+	// Locale-specific strings
 	const I18N = {
+		'de-de': {
+			date_watched: 'Datum angesehen',
+			episode_title: 'Episode',
+			movie: 'Film',
+			series: 'Serie',
+			title: 'Titel',
+			type: 'Typ',
+		},
 		'en-us': {
 			date_watched: 'Date Watched',
 			episode_title: 'Episode',
@@ -214,8 +222,8 @@
 
 	// Script entry point
 	log('Script started');
-
-	const i18n = I18N['en-us'];
+	const locale = document.documentElement.lang;
+	const i18n = I18N[locale] ?? I18N['en-us'];
 
 	await forceLoadWatchHistory();
 	downloadCsv(parseWatchHistory());
