@@ -6,7 +6,7 @@
 		record: '\n',
 	};
 
-	// Locale-specific strings
+	// Locale-specific strings and functions
 	const I18N = {
 		'de-de': {
 			date_watched: 'Datum angesehen',
@@ -15,6 +15,12 @@
 			series: 'Serie',
 			title: 'Titel',
 			type: 'Typ',
+			parseDateString: (dateString) =>
+				// ex. 23. April 2024
+				parseDateString(
+					dateString,
+					/(?<d>\d{1,2})\. (?<m>[a-zA-ZäöüÄÖÜß]+) (?<y>\d{4})/,
+				),
 		},
 		'en-us': {
 			date_watched: 'Date Watched',
@@ -23,6 +29,8 @@
 			series: 'Series',
 			title: 'Title',
 			type: 'Type',
+			// ex. April 23, 2024
+			parseDateString: (dateString) => new Date(dateString),
 		},
 	};
 
@@ -51,37 +59,20 @@
 		);
 	}
 
-	// Parse an English date string (e.g. "December 14, 2021") into a Date object
-	const englishDateToISO = (englishDateString) => new Date(englishDateString);
+	// Parse a localized date string to a Date object
+	const parseDateString = (dateString, regex, isMonthNumeric = false) => {
+		const { y, m, d } = regex.exec(dateString).groups;
 
-	// Parse a German date string (e.g. "14. Dezember 2021") into a Date object
-	const germanDateToISO = (germanDate) => {
-		const months = getMonthNames('de-de');
-
-		const dateParts = germanDate.match(
-			/^(\d{1,2})\. ([A-Za-zäöüÄÖÜß]+) (\d{4})$/,
+		return new Date(
+			Number.parseInt(y),
+			isMonthNumeric ? Number.parseInt(m - 1) : i18n.monthNames[m],
+			Number.parseInt(d),
 		);
-
-		if (!dateParts) throw new Error('Invalid German date format');
-
-		const day = Number.parseInt(dateParts[1], 10);
-		const month = months[dateParts[2]];
-		const year = Number.parseInt(dateParts[3], 10);
-
-		if (month === undefined) throw new Error('Invalid German month name');
-
-		const date = new Date(year, month, day);
-
-		return date;
 	};
 
 	// Convert a localized date string to an ISO date string
 	const toIsoDateString = (dateString) => {
-		const languageTag = document.documentElement.lang;
-		const date = {
-			'de-de': germanDateToISO,
-			'en-us': englishDateToISO,
-		}[languageTag](dateString);
+		const date = i18n.parseDateString(dateString);
 
 		if (!date) {
 			throw new Error(
