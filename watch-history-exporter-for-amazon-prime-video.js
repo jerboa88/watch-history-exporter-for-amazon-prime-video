@@ -6,6 +6,21 @@
 		record: '\n',
 	};
 
+	const I18N_COMMON_ES = {
+		date_watched: 'Fecha vista',
+		episode_title: 'Episodio',
+		movie: 'Película',
+		series: 'Serie',
+		title: 'Título',
+		type: 'Tipo',
+		parseDateString: (dateString) =>
+			parseDateString(
+				dateString,
+				// ex. 23 de abril de 2024
+				/(?<d>\d{1,2}) de (?<m>[a-zA-Z]+) de (?<y>\d{4})/,
+			),
+	};
+
 	// Locale-specific strings and functions
 	const I18N = {
 		'de-de': {
@@ -19,7 +34,7 @@
 				// ex. 23. April 2024
 				parseDateString(
 					dateString,
-					/(?<d>\d{1,2})\. (?<m>[a-zA-ZäöüÄÖÜß]+) (?<y>\d{4})/,
+					/(?<d>\d{1,2})\. (?<m>[a-zA-Zä]+) (?<y>\d{4})/,
 				),
 		},
 		'en-us': {
@@ -31,6 +46,11 @@
 			type: 'Type',
 			// ex. April 23, 2024
 			parseDateString: (dateString) => new Date(dateString),
+		},
+		'es-419': I18N_COMMON_ES,
+		'es-es': {
+			...I18N_COMMON_ES,
+			date_watched: 'Fecha de visualización',
 		},
 	};
 
@@ -79,7 +99,6 @@
 			console.groupEnd();
 			log(
 				'Unsupported date format. Try changing the language of your Amazon Prime Video account to English',
-				true,
 				console.error,
 			);
 			throw new Error();
