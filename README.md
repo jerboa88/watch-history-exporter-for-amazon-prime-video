@@ -24,9 +24,20 @@
 ## About
 This script runs in your browser and allows you to save your watch history from [Amazon Prime Video] to a CSV file, where it can be processed further or imported into other platforms.
 
+### Features
+- **⚡ Browser-based:** Run the script directly in your browser, no installation required
+- **📥 Detailed export:** Save your complete watch history as a CSV file with the following columns:
+  - Date Watched
+  - Type (movie or TV show)
+  - Title
+  - Episode Title (for TV shows)
+- **🌍 Multi-language support:** Built-in support for English and German
+
+
 ## Usage
 > [!CAUTION]
 > For security reasons, I do not recommend running scripts from the internet unless you understand what they are doing. If you are not a developer, I recommend reading the comments in the code and/or asking a LLM like [ChatGPT] to explain it to you.
+>
 
 You can run the script by going to [primevideo.com/settings/watch-history], copying the code in [watch-history-exporter-for-amazon-prime-video.js], and pasting it into your browser's devtools console.
 
