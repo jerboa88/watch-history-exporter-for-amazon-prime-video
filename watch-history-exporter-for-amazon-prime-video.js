@@ -108,7 +108,8 @@
 		return Object.fromEntries(
 			[...Array(12).keys()]
 				.map((monthIndex) => formatter.format(new Date(2025, monthIndex)))
-				.map((key, index) => [key, index]),
+				// Convert to lowercase to avoid case sensitivity issues
+				.map((key, index) => [key.toLowerCase(), index]),
 		);
 	}
 
@@ -118,7 +119,9 @@
 
 		return new Date(
 			Number.parseInt(y),
-			isMonthNumeric ? Number.parseInt(m - 1) : i18n.monthNames[m],
+			isMonthNumeric
+				? Number.parseInt(m) - 1
+				: i18n.monthNames[m.toLowerCase()],
 			Number.parseInt(d),
 		);
 	};
