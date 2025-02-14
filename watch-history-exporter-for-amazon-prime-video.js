@@ -36,6 +36,22 @@
 			),
 	};
 
+	const I18N_COMMON_ZH = {
+		date_watched: '觀看日期',
+		episode_title: '集',
+		movie: '電影',
+		series: '劇集系列',
+		title: '標題',
+		type: '類型',
+		parseDateString: (dateString) =>
+			parseDateString(
+				dateString,
+				// ex. 2024年4月23日
+				/(?<y>\d{4})年(?<m>\d{1,2})月(?<d>\d{1,2})日/,
+				true,
+			),
+	};
+
 	// Locale-specific strings and functions
 	const I18N = {
 		'de-de': {
@@ -86,6 +102,11 @@
 			...I18N_COMMON_PT,
 			date_watched: 'Data de visualização',
 		},
+		'zh-cn': {
+			...I18N_COMMON_ZH,
+			series: '剧集系列',
+		},
+		'zh-tw': I18N_COMMON_ZH,
 		'ja-jp': {
 			date_watched: '視聴日',
 			episode_title: 'エピソード',

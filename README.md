@@ -40,6 +40,8 @@ This script runs in your browser and allows you to save your watch history from 
   - Português (Brasil)
   - Português (Portugal)
   - 日本語
+  - 简体中文
+  - 繁體中文
 
 
 ## Usage
@@ -83,7 +85,7 @@ Otherwise, make sure "Pop-ups and redirects" and "Automatic downloads" are enabl
 ## Contributing
 If you encounter any problems with the script, feel free to [create an issue].
 
-Contributions and forks are welcome. By contributing code, you agree to waive all claim of copyright to your work and release it to the public domain.
+Pull requests, bug reports, translations, and other kinds of contributions are greatly appreciated. By contributing code, you agree to waive all claim of copyright to your work and release it to the public domain.
 
 
 ## License
