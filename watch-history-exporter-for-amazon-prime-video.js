@@ -10,7 +10,7 @@
 	const I18N = {
 		'de-de': {
 			date_watched: 'Datum angesehen',
-			episode_title: 'Episode',
+			episode_title: 'Folge',
 			movie: 'Film',
 			series: 'Serie',
 			title: 'Titel',
@@ -224,10 +224,18 @@
 	// Script entry point
 	log('Script started');
 	const languageTag = document.documentElement.lang;
-	const i18n = {
-		...(I18N[languageTag] ?? I18N['en-us']),
-		monthNames: getMonthNames(languageTag),
-	};
+	let i18n = I18N[languageTag];
+
+	if (!i18n) {
+		log(
+			`Language "${languageTag}" is not supported. The script may fail`,
+			console.warn,
+		);
+
+		i18n = I18N['en-us'];
+	}
+
+	i18n.monthNames = getMonthNames(languageTag);
 
 	await forceLoadWatchHistory();
 	downloadCsv(parseWatchHistory());
