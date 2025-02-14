@@ -1,23 +1,37 @@
-(() => {
+(async () => {
 	// Delimiters for the CSV file
 	const DELIMITER = {
-		STRING: '"',
-		FIELD: ',',
-		RECORD: '\n',
+		string: '"',
+		field: ',',
+		record: '\n',
 	};
 
-	//  Column names for the CSV file
-	const COLUMN_NAME = {
-		DATE_WATCHED: 'Date Watched',
-		TYPE: 'Type',
-		TITLE: 'Title',
-		EPISODE_TITLE: 'Episode',
-	};
-
-	//  Values for the TYPE column in the CSV file
-	const MEDIA_TYPE_NAME = {
-		SERIES: 'Series',
-		MOVIE: 'Movie',
+	// Locale-specific strings and functions
+	const I18N = {
+		'de-de': {
+			date_watched: 'Datum angesehen',
+			episode_title: 'Episode',
+			movie: 'Film',
+			series: 'Serie',
+			title: 'Titel',
+			type: 'Typ',
+			parseDateString: (dateString) =>
+				// ex. 23. April 2024
+				parseDateString(
+					dateString,
+					/(?<d>\d{1,2})\. (?<m>[a-zA-ZäöüÄÖÜß]+) (?<y>\d{4})/,
+				),
+		},
+		'en-us': {
+			date_watched: 'Date Watched',
+			episode_title: 'Episode',
+			movie: 'Movie',
+			series: 'Series',
+			title: 'Title',
+			type: 'Type',
+			// ex. April 23, 2024
+			parseDateString: (dateString) => new Date(dateString),
+		},
 	};
 
 	// Print an informational message to the console
@@ -33,50 +47,32 @@
 		logFunc(...prefixArray, msg);
 	};
 
-	// Parse an English date string (e.g. "December 14, 2021") into a Date object
-	const englishDateToISO = (englishDateString) => new Date(englishDateString);
+	// Get a list of long month names for a given language
+	// Based on code by Maksim (https://dev.to/pretaporter/how-to-get-month-list-in-your-language-4lfb)
+	function getMonthNames(languageTag) {
+		const formatter = new Intl.DateTimeFormat(languageTag, { month: 'long' });
 
-	// Parse a German date string (e.g. "14. Dezember 2021") into a Date object
-	const germanDateToISO = (germanDate) => {
-		const months = {
-			Januar: 0,
-			Februar: 1,
-			März: 2,
-			April: 3,
-			Mai: 4,
-			Juni: 5,
-			Juli: 6,
-			August: 7,
-			September: 8,
-			Oktober: 9,
-			November: 10,
-			Dezember: 11,
-		};
-
-		const dateParts = germanDate.match(
-			/^(\d{1,2})\. ([A-Za-zäöüÄÖÜß]+) (\d{4})$/,
+		return Object.fromEntries(
+			[...Array(12).keys()]
+				.map((monthIndex) => formatter.format(new Date(2025, monthIndex)))
+				.map((key, index) => [key, index]),
 		);
+	}
 
-		if (!dateParts) throw new Error('Invalid German date format');
+	// Parse a localized date string to a Date object
+	const parseDateString = (dateString, regex, isMonthNumeric = false) => {
+		const { y, m, d } = regex.exec(dateString).groups;
 
-		const day = Number.parseInt(dateParts[1], 10);
-		const month = months[dateParts[2]];
-		const year = Number.parseInt(dateParts[3], 10);
-
-		if (month === undefined) throw new Error('Invalid German month name');
-
-		const date = new Date(year, month, day);
-
-		return date;
+		return new Date(
+			Number.parseInt(y),
+			isMonthNumeric ? Number.parseInt(m - 1) : i18n.monthNames[m],
+			Number.parseInt(d),
+		);
 	};
 
 	// Convert a localized date string to an ISO date string
 	const toIsoDateString = (dateString) => {
-		const locale = document.documentElement.lang;
-		const date = {
-			'de-de': germanDateToISO,
-			'en-us': englishDateToISO,
-		}[locale](dateString);
+		const date = i18n.parseDateString(dateString);
 
 		if (!date) {
 			throw new Error(
@@ -88,18 +84,21 @@
 	};
 
 	// Add a movie or episode to the array
-	const addItem = (watchHistoryArray, dateWatched, title, episodeTitle) => {
-		const formattedDateWatched = toIsoDateString(dateWatched);
-		const mediaType = episodeTitle
-			? MEDIA_TYPE_NAME.SERIES
-			: MEDIA_TYPE_NAME.MOVIE;
-		const formattedTitle = `${DELIMITER.STRING}${title}${DELIMITER.STRING}`;
+	const addItem = (
+		watchHistoryArray,
+		dateWatchedString,
+		title,
+		episodeTitle,
+	) => {
+		const isoDateWatchedString = toIsoDateString(dateWatchedString);
+		const mediaType = episodeTitle ? i18n.series : i18n.movie;
+		const formattedTitle = `${DELIMITER.string}${title}${DELIMITER.string}`;
 		const formattedEpisodeTitle = episodeTitle
-			? `${DELIMITER.STRING}${episodeTitle}${DELIMITER.STRING}`
+			? `${DELIMITER.string}${episodeTitle}${DELIMITER.string}`
 			: '';
 
 		watchHistoryArray.push([
-			formattedDateWatched,
+			isoDateWatchedString,
 			mediaType,
 			formattedTitle,
 			formattedEpisodeTitle,
@@ -123,11 +122,11 @@
 		// Loop over date sections
 		for (const dateSection of dateSections) {
 			const mediaSections = dateSection.querySelectorAll('& > ul > li');
-			const dateWatched = dateSection.querySelector(
+			const dateWatchedString = dateSection.querySelector(
 				'[data-automation-id^="wh-date"]',
 			).textContent;
 
-			log(dateWatched, false, true);
+			log(dateWatchedString, false, true);
 
 			// Loop over media watched for each date
 			for (const mediaSection of mediaSections) {
@@ -138,7 +137,7 @@
 				// If the 'Episodes watched' checkbox exists, it's a series
 				// Otherwise, it's a movie
 				if (episodesWatchedCheckbox) {
-					log(`[${MEDIA_TYPE_NAME.SERIES}] ${title}`, false, true);
+					log(`[${i18n.series}] ${title}`, false, true);
 
 					// Click the 'Episodes watched' checkbox if it exists to get the episode information
 					if (!episodesWatchedCheckbox.checked) {
@@ -155,13 +154,13 @@
 						const episodeTitle = episodeSection?.textContent?.trim();
 
 						log(episodeTitle, false);
-						addItem(watchHistoryArray, dateWatched, title, episodeTitle);
+						addItem(watchHistoryArray, dateWatchedString, title, episodeTitle);
 					}
 
 					console.groupEnd();
 				} else {
-					log(`[${MEDIA_TYPE_NAME.MOVIE}] ${title}`, false);
-					addItem(watchHistoryArray, dateWatched, title);
+					log(`[${i18n.movie}] ${title}`, false);
+					addItem(watchHistoryArray, dateWatchedString, title);
 				}
 			}
 
@@ -202,21 +201,29 @@
 		);
 		console.groupEnd();
 
-		const csvData = [Object.values(COLUMN_NAME), ...inputArray]
-			.map((item) => item.join(DELIMITER.FIELD))
-			.join(DELIMITER.RECORD);
+		const columnNames = [
+			i18n.date_watched,
+			i18n.type,
+			i18n.title,
+			i18n.episode_title,
+		];
+		const csvData = [columnNames, ...inputArray]
+			.map((item) => item.join(DELIMITER.field))
+			.join(DELIMITER.record);
 		const csvDataUrl = `data:text/csv;charset=utf-8,${encodeURIComponent(csvData)}`;
 
 		window.open(csvDataUrl);
 	};
 
-	// Entry point
-	const main = async () => {
-		log('Script started');
-		await forceLoadWatchHistory();
-		downloadCsv(parseWatchHistory());
-		log('Script finished');
+	// Script entry point
+	log('Script started');
+	const languageTag = document.documentElement.lang;
+	const i18n = {
+		...(I18N[languageTag] ?? I18N['en-us']),
+		monthNames: getMonthNames(languageTag),
 	};
 
-	return main();
+	await forceLoadWatchHistory();
+	downloadCsv(parseWatchHistory());
+	log('Script finished');
 })();

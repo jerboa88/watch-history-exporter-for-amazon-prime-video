@@ -1,7 +1,7 @@
 <!-- Project Header -->
 <div align="center">
   <img class="projectLogo" src="screenshot.png" alt="Project logo" title="Project logo" width="512">
-  
+
   <h1 class="projectName">Watch History Exporter for Amazon Prime Video</h1>
 
   <p class="projectBadges">
@@ -24,17 +24,33 @@
 ## About
 This script runs in your browser and allows you to save your watch history from [Amazon Prime Video] to a CSV file, where it can be processed further or imported into other platforms.
 
-## Usage
-You can run the script by going to [primevideo.com/settings/watch-history], copying the code in [watch-history-exporter-for-amazon-prime-video.js], and pasting it into your browser's devtools console.
+### Features
+- **⚡ Browser-based:** Run the script directly in your browser, no installation required
+- **📥 Detailed export:** Save your complete watch history as a CSV file with the following columns:
+  - Date Watched
+  - Type (movie or TV show)
+  - Title
+  - Episode Title (for TV shows)
+- **🌍 Multi-language support:** Built-in support for English and German
 
+
+## Usage
 > [!CAUTION]
 > For security reasons, I do not recommend running scripts from the internet unless you understand what they are doing. If you are not a developer, I recommend reading the comments in the code and/or asking a LLM like [ChatGPT] to explain it to you.
+>
 
-**Detailed instructions:**
- 1. Open [primevideo.com/settings/watch-history] in your browser
- 2. Open your browser's devtools console ([how?])
- 3. Copy the code in [watch-history-exporter-for-amazon-prime-video.js] and paste it into the console. If this doesn't work or you see a warning message about pasting, see the [FAQ].
- 4. Press enter to run the script. You should see the script running in the console and you'll be prompted to save a file when it finishes. If this doesn't happen, see the [FAQ].
+You can run the script by going to [primevideo.com/settings/watch-history], copying the code in [watch-history-exporter-for-amazon-prime-video.js], and pasting it into your browser's devtools console.
+
+<details>
+  <summary><b>Detailed instructions:</b></summary>
+  <ol>
+    <li>Open <a href="https://www.primevideo.com/settings/watch-history">primevideo.com/settings/watch-history</a> in your browser</li>
+    <li>Open your browser's devtools console (<a href="https://balsamiq.com/support/faqs/browserconsole/">how?</a>)</li>
+    <li>Copy the code in <a href="watch-history-exporter-for-amazon-prime-video.js">watch-history-exporter-for-amazon-prime-video.js</a> and paste it into the console. If this doesn't work or you see a warning message about pasting, see the <a href="#FAQ">FAQ</a>.</li>
+    <li>Press enter to run the script. You should see the script running in the console and you'll be prompted to save a file when it finishes. If this doesn't happen, see the <a href="#FAQ">FAQ</a>.</li>
+  </ol>
+</details>
+
 
 ## FAQ
 
@@ -44,7 +60,7 @@ Some browsers prevent you from pasting code in the console because it could be m
 If this happens, follow the instructions in the console to re-enable pasting, and then try again. For Chrome, the following steps should work:
  1. Try to paste something in the console. You should get a warning message about pasting
  2. Type "allow pasting" in the console and press enter
- 
+
  See [this video] for a visual walkthrough.
 
 ### I get an `Uncaught SyntaxError: Unexpected identifier` error when running the script
@@ -54,6 +70,7 @@ Make sure that you select the entire file with <kbd>Ctrl</kbd> + <kbd>A</kbd> wh
 If you have a default download folder set, check if the file is there.
 
 Otherwise, make sure "Pop-ups and redirects" and "Automatic downloads" are enabled for www.primevideo.com in your browser settings.
+
 
 ## Contributing
 If you encounter any problems with the script, feel free to [create an issue].
@@ -67,11 +84,9 @@ This project is released into the public domain. See the [LICENSE] for details. 
 
 [watch-history-exporter-for-amazon-prime-video.js]: watch-history-exporter-for-amazon-prime-video.js
 [LICENSE]: LICENSE
-[FAQ]: #FAQ
 [create an issue]: https://github.com/jerboa88/watch-history-exporter-for-amazon-prime-video/issues
 [primevideo.com/settings/watch-history]: https://www.primevideo.com/settings/watch-history
 [Amazon Prime Video]: https://www.primevideo.com
 [this video]: https://youtu.be/X5uyCtVD1-o?si=AOrzgez90KiDlA-z&t=11
 [Chrome for Developers Blog]: https://developer.chrome.com/blog/self-xss
 [ChatGPT]: https://chatgpt.com/
-[how?]: https://balsamiq.com/support/faqs/browserconsole/
