@@ -31,7 +31,15 @@ This script runs in your browser and allows you to save your watch history from 
   - Type (movie or TV show)
   - Title
   - Episode Title (for TV shows)
-- **🌍 Multi-language support:** Built-in support for English and German
+- **🌍 Multi-language support:** Built-in support for the following languages:
+  - Deutsch
+  - English
+  - Español
+  - Español Latinoamérica
+  - Français
+  - Português (Brasil)
+  - Português (Portugal)
+  - 日本語
 
 
 ## Usage
