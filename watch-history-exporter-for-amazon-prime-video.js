@@ -86,6 +86,16 @@
 			...I18N_COMMON_PT,
 			date_watched: 'Data de visualização',
 		},
+		'ja-jp': {
+			date_watched: '視聴日',
+			episode_title: 'エピソード',
+			movie: '映画',
+			series: 'シリーズ',
+			title: 'タイトル',
+			type: '種類',
+			// ex. 2024/04/23
+			parseDateString: (dateString) => new Date(dateString),
+		},
 	};
 
 	// Print an informational message to the console
