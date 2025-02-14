@@ -40,6 +40,8 @@ This script runs in your browser and allows you to save your watch history from 
   - Português (Brasil)
   - Português (Portugal)
   - 日本語
+  - 简体中文
+  - 繁體中文
 
 
 ## Usage
