@@ -35,8 +35,7 @@
 	};
 
 	// Print an informational message to the console
-	const log = (msg, showPrefix = true, startGroup = false) => {
-		const logFunc = startGroup ? console.group : console.info;
+	const log = (msg, logFn = console.info, showPrefix = true) => {
 		const prefixArray = showPrefix
 			? [
 					'%c[Watch History Exporter for Amazon Prime]',
@@ -44,7 +43,7 @@
 				]
 			: [];
 
-		logFunc(...prefixArray, msg);
+		logFn(...prefixArray, msg);
 	};
 
 	// Get a list of long month names for a given language
@@ -109,7 +108,7 @@
 
 	// Parse the watch history and return an array of arrays
 	const parseWatchHistory = () => {
-		log('Parsing watch history... Items found:', true, true);
+		log('Parsing watch history... Items found:', console.group);
 
 		// Initialize an empty array to store the watch history
 		const watchHistoryArray = [];
@@ -126,7 +125,7 @@
 				'[data-automation-id^="wh-date"]',
 			).textContent;
 
-			log(dateWatchedString, false, true);
+			log(dateWatchedString, console.group, false);
 
 			// Loop over media watched for each date
 			for (const mediaSection of mediaSections) {
@@ -137,7 +136,7 @@
 				// If the 'Episodes watched' checkbox exists, it's a series
 				// Otherwise, it's a movie
 				if (episodesWatchedCheckbox) {
-					log(`[${i18n.series}] ${title}`, false, true);
+					log(`[${i18n.series}] ${title}`, console.group, false);
 
 					// Click the 'Episodes watched' checkbox if it exists to get the episode information
 					if (!episodesWatchedCheckbox.checked) {
@@ -153,13 +152,13 @@
 					for (const episodeSection of episodeSections) {
 						const episodeTitle = episodeSection?.textContent?.trim();
 
-						log(episodeTitle, false);
+						log(episodeTitle, console.info, false);
 						addItem(watchHistoryArray, dateWatchedString, title, episodeTitle);
 					}
 
 					console.groupEnd();
 				} else {
-					log(`[${i18n.movie}] ${title}`, false);
+					log(`[${i18n.movie}] ${title}`, console.info, false);
 					addItem(watchHistoryArray, dateWatchedString, title);
 				}
 			}
@@ -194,9 +193,10 @@
 
 	// Download the watch history as a CSV file
 	const downloadCsv = (inputArray) => {
-		log('Saving CSV file...', true, true);
+		log('Saving CSV file...', console.group);
 		log(
 			'If you are not prompted to save a file, make sure "Pop-ups and redirects" and "Automatic downloads" are enabled for www.primevideo.com in your browser.',
+			console.info,
 			false,
 		);
 		console.groupEnd();
@@ -226,4 +226,4 @@
 	await forceLoadWatchHistory();
 	downloadCsv(parseWatchHistory());
 	log('Script finished');
-})();
+})() && 'Script loaded';
