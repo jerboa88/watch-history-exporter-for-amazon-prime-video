@@ -21,6 +21,21 @@
 			),
 	};
 
+	const I18N_COMMON_PT = {
+		date_watched: 'Data assistida',
+		episode_title: 'Episódio',
+		movie: 'Filme',
+		series: 'Série',
+		title: 'Título',
+		type: 'Tipo',
+		parseDateString: (dateString) =>
+			parseDateString(
+				dateString,
+				// ex. 23 de Abril de 2024
+				/(?<d>\d{1,2}) de (?<m>[a-zA-Zç]+) de (?<y>\d{4})/,
+			),
+	};
+
 	// Locale-specific strings and functions
 	const I18N = {
 		'de-de': {
@@ -66,6 +81,11 @@
 					/(?<d>\d{1,2}) (?<m>[a-zA-Zéû]+) (?<y>\d{4})/,
 				),
 		},
+		'pt-br': I18N_COMMON_PT,
+		'pt-pt': {
+			...I18N_COMMON_PT,
+			date_watched: 'Data de visualização',
+		},
 	};
 
 	// Print an informational message to the console
@@ -88,7 +108,8 @@
 		return Object.fromEntries(
 			[...Array(12).keys()]
 				.map((monthIndex) => formatter.format(new Date(2025, monthIndex)))
-				.map((key, index) => [key, index]),
+				// Convert to lowercase to avoid case sensitivity issues
+				.map((key, index) => [key.toLowerCase(), index]),
 		);
 	}
 
@@ -98,7 +119,9 @@
 
 		return new Date(
 			Number.parseInt(y),
-			isMonthNumeric ? Number.parseInt(m - 1) : i18n.monthNames[m],
+			isMonthNumeric
+				? Number.parseInt(m) - 1
+				: i18n.monthNames[m.toLowerCase()],
 			Number.parseInt(d),
 		);
 	};
