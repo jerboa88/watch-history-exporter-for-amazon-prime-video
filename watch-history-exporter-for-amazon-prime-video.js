@@ -10,7 +10,7 @@
 	const I18N = {
 		'de-de': {
 			date_watched: 'Datum angesehen',
-			episode_title: 'Episode',
+			episode_title: 'Folge',
 			movie: 'Film',
 			series: 'Serie',
 			title: 'Titel',
@@ -35,8 +35,7 @@
 	};
 
 	// Print an informational message to the console
-	const log = (msg, showPrefix = true, startGroup = false) => {
-		const logFunc = startGroup ? console.group : console.info;
+	const log = (msg, logFn = console.info, showPrefix = true) => {
 		const prefixArray = showPrefix
 			? [
 					'%c[Watch History Exporter for Amazon Prime]',
@@ -44,7 +43,7 @@
 				]
 			: [];
 
-		logFunc(...prefixArray, msg);
+		logFn(...prefixArray, msg);
 	};
 
 	// Get a list of long month names for a given language
@@ -74,10 +73,16 @@
 	const toIsoDateString = (dateString) => {
 		const date = i18n.parseDateString(dateString);
 
-		if (!date) {
-			throw new Error(
-				'Invalid date format. Try changing the language of your Amazon Prime Video account to English',
+		if (Number.isNaN(date.getTime())) {
+			console.groupEnd();
+			console.groupEnd();
+			console.groupEnd();
+			log(
+				'Unsupported date format. Try changing the language of your Amazon Prime Video account to English',
+				true,
+				console.error,
 			);
+			throw new Error();
 		}
 
 		return date.toISOString().split('T')[0];
@@ -109,7 +114,7 @@
 
 	// Parse the watch history and return an array of arrays
 	const parseWatchHistory = () => {
-		log('Parsing watch history... Items found:', true, true);
+		log('Parsing watch history... Items found:', console.group);
 
 		// Initialize an empty array to store the watch history
 		const watchHistoryArray = [];
@@ -126,7 +131,7 @@
 				'[data-automation-id^="wh-date"]',
 			).textContent;
 
-			log(dateWatchedString, false, true);
+			log(dateWatchedString, console.group, false);
 
 			// Loop over media watched for each date
 			for (const mediaSection of mediaSections) {
@@ -137,7 +142,7 @@
 				// If the 'Episodes watched' checkbox exists, it's a series
 				// Otherwise, it's a movie
 				if (episodesWatchedCheckbox) {
-					log(`[${i18n.series}] ${title}`, false, true);
+					log(`[${i18n.series}] ${title}`, console.group, false);
 
 					// Click the 'Episodes watched' checkbox if it exists to get the episode information
 					if (!episodesWatchedCheckbox.checked) {
@@ -153,13 +158,13 @@
 					for (const episodeSection of episodeSections) {
 						const episodeTitle = episodeSection?.textContent?.trim();
 
-						log(episodeTitle, false);
+						log(episodeTitle, console.info, false);
 						addItem(watchHistoryArray, dateWatchedString, title, episodeTitle);
 					}
 
 					console.groupEnd();
 				} else {
-					log(`[${i18n.movie}] ${title}`, false);
+					log(`[${i18n.movie}] ${title}`, console.info, false);
 					addItem(watchHistoryArray, dateWatchedString, title);
 				}
 			}
@@ -194,9 +199,10 @@
 
 	// Download the watch history as a CSV file
 	const downloadCsv = (inputArray) => {
-		log('Saving CSV file...', true, true);
+		log('Saving CSV file...', console.group);
 		log(
 			'If you are not prompted to save a file, make sure "Pop-ups and redirects" and "Automatic downloads" are enabled for www.primevideo.com in your browser.',
+			console.info,
 			false,
 		);
 		console.groupEnd();
@@ -218,12 +224,20 @@
 	// Script entry point
 	log('Script started');
 	const languageTag = document.documentElement.lang;
-	const i18n = {
-		...(I18N[languageTag] ?? I18N['en-us']),
-		monthNames: getMonthNames(languageTag),
-	};
+	let i18n = I18N[languageTag];
+
+	if (!i18n) {
+		log(
+			`Language "${languageTag}" is not supported. The script may fail`,
+			console.warn,
+		);
+
+		i18n = I18N['en-us'];
+	}
+
+	i18n.monthNames = getMonthNames(languageTag);
 
 	await forceLoadWatchHistory();
 	downloadCsv(parseWatchHistory());
 	log('Script finished');
-})();
+})() && 'Script loaded';
