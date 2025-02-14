@@ -52,6 +52,20 @@
 			...I18N_COMMON_ES,
 			date_watched: 'Fecha de visualización',
 		},
+		'fr-fr': {
+			date_watched: 'Date regardée',
+			episode_title: 'Épisode',
+			movie: 'Film',
+			series: 'Série',
+			title: 'Titre',
+			type: 'Type',
+			parseDateString: (dateString) =>
+				parseDateString(
+					dateString,
+					// ex. 23 avril 2024
+					/(?<d>\d{1,2}) (?<m>[a-zA-Zéû]+) (?<y>\d{4})/,
+				),
+		},
 	};
 
 	// Print an informational message to the console
