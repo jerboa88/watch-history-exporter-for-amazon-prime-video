@@ -21,6 +21,21 @@
 			),
 	};
 
+	const I18N_COMMON_PT = {
+		date_watched: 'Data assistida',
+		episode_title: 'Episódio',
+		movie: 'Filme',
+		series: 'Série',
+		title: 'Título',
+		type: 'Tipo',
+		parseDateString: (dateString) =>
+			parseDateString(
+				dateString,
+				// ex. 23 de Abril de 2024
+				/(?<d>\d{1,2}) de (?<m>[a-zA-Zç]+) de (?<y>\d{4})/,
+			),
+	};
+
 	// Locale-specific strings and functions
 	const I18N = {
 		'de-de': {
@@ -65,6 +80,11 @@
 					// ex. 23 avril 2024
 					/(?<d>\d{1,2}) (?<m>[a-zA-Zéû]+) (?<y>\d{4})/,
 				),
+		},
+		'pt-br': I18N_COMMON_PT,
+		'pt-pt': {
+			...I18N_COMMON_PT,
+			date_watched: 'Data de visualização',
 		},
 	};
 
