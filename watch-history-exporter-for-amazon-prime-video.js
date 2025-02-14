@@ -73,10 +73,16 @@
 	const toIsoDateString = (dateString) => {
 		const date = i18n.parseDateString(dateString);
 
-		if (!date) {
-			throw new Error(
-				'Invalid date format. Try changing the language of your Amazon Prime Video account to English',
+		if (Number.isNaN(date.getTime())) {
+			console.groupEnd();
+			console.groupEnd();
+			console.groupEnd();
+			log(
+				'Unsupported date format. Try changing the language of your Amazon Prime Video account to English',
+				true,
+				console.error,
 			);
+			throw new Error();
 		}
 
 		return date.toISOString().split('T')[0];
