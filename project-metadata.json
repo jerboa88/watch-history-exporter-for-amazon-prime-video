@@ -1,0 +1,11 @@
+{
+  "$schema": "https://johng.io/schema/project-metadata.json",
+  "name": "Watch History Exporter for Amazon Prime Video",
+	"logoPath": "screenshot.png",
+	"category": "Script",
+  "schema": {
+    "type": "Software",
+    "applicationCategory": "Entertainment",
+    "operatingSystem": "Any"
+  }
+}
