@@ -13,7 +13,7 @@
     </a>
   </p>
 
-  <p class="projectDesc" data-exposition="A script for exporting your Amazon Prime Video watch history as a CSV file.">
+  <p class="projectDesc">
     A script to export your Amazon Prime Video watch history as a CSV file.
   </p>
 
