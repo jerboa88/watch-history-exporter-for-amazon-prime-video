@@ -995,84 +995,17 @@ async function scrapeWatchHistory() {
     let currentHeight = 0;
     let scrollAttempts = 0;
     let noChangeCount = 0;
-    const maxScrollAttempts = 50; // Increased limit for scrolling attempts
-    const maxNoChangeCount = 3; // Number of times height can remain unchanged before considering complete
+    const maxScrollAttempts = 1000; // Extremely high limit to ensure we load everything
+    const maxNoChangeCount = 10; // Number of times height can remain unchanged before considering complete
     
     try {
-      // Add a visual indicator for scrolling progress
-      await page.evaluate(() => {
-        const progressDiv = document.createElement('div');
-        progressDiv.id = 'scroll-progress-indicator';
-        progressDiv.style.position = 'fixed';
-        progressDiv.style.top = '0';
-        progressDiv.style.left = '0';
-        progressDiv.style.width = '100%';
-        progressDiv.style.padding = '10px';
-        progressDiv.style.backgroundColor = 'blue';
-        progressDiv.style.color = 'white';
-        progressDiv.style.fontWeight = 'bold';
-        progressDiv.style.fontSize = '16px';
-        progressDiv.style.textAlign = 'center';
-        progressDiv.style.zIndex = '9999';
-        progressDiv.textContent = 'Scrolling in progress: 0%';
-        document.body.appendChild(progressDiv);
-        
-        // Add a function to update the progress indicator
-        window.updateScrollProgress = (percent) => {
-          const indicator = document.getElementById('scroll-progress-indicator');
-          if (indicator) {
-            indicator.textContent = `Scrolling in progress: ${percent}%`;
-            indicator.style.backgroundColor = percent > 90 ? 'green' : 'blue';
-          }
-        };
-      });
+      console.log('Implementing simple, brute-force scrolling to load all items...');
       
-      // Get initial height
+      // First, get initial height
       currentHeight = await page.evaluate(() => document.body.scrollHeight);
       console.log(`Initial page height: ${currentHeight}`);
       
-      // First, do a series of small scrolls with longer waits to ensure content loads
-      console.log('Performing initial scrolling sequence...');
-      
-      // Scroll in 10 steps to the bottom
-      for (let step = 1; step <= 10; step++) {
-        try {
-          await page.evaluate((step) => {
-            const totalHeight = document.body.scrollHeight;
-            const scrollAmount = (totalHeight * step) / 10;
-            window.scrollTo(0, scrollAmount);
-            
-            // Update progress indicator
-            if (window.updateScrollProgress) {
-              window.updateScrollProgress(step * 10);
-            }
-          }, step);
-          
-          console.log(`Initial scroll step ${step}/10 completed`);
-          
-          // Wait longer between scrolls to ensure content loads
-          await new Promise(resolve => setTimeout(resolve, 5000)); // Increased wait time to 5 seconds
-        } catch (initialScrollError) {
-          console.warn(`Error during initial scroll step ${step}:`, initialScrollError.message);
-        }
-      }
-      
-      // Wait even longer after the initial scrolling sequence
-      console.log('Waiting for content to load after initial scrolling...');
-      await new Promise(resolve => setTimeout(resolve, 8000));
-      
-      // Get new height after initial scrolling
-      try {
-        currentHeight = await page.evaluate(() => document.body.scrollHeight);
-        console.log(`Height after initial scrolling: ${currentHeight}`);
-      } catch (heightError) {
-        console.warn('Error getting height after initial scrolling:', heightError.message);
-      }
-      
-      // Now do more deliberate incremental scrolling to ensure everything is loaded
-      console.log('Starting incremental scrolling to load all content...');
-      
-      // Use a different approach for the main scrolling loop
+      // Simple brute-force scrolling loop
       while ((previousHeight !== currentHeight || noChangeCount < maxNoChangeCount) && scrollAttempts < maxScrollAttempts) {
         if (previousHeight === currentHeight) {
           noChangeCount++;
@@ -1085,159 +1018,117 @@ async function scrapeWatchHistory() {
         scrollAttempts++;
         
         try {
-          // Wait before scrolling to ensure page stability
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          // Simple scroll to bottom
+          console.log(`Scroll attempt ${scrollAttempts}/${maxScrollAttempts}`);
           
-          // Use a more deliberate scrolling approach with try/catch for each operation
-          try {
-            // First check if we're still on the watch history page
-            const isOnWatchHistoryPage = await page.evaluate(() => {
-              return window.location.href.includes('watch-history');
-            }).catch(() => false);
-            
-            if (!isOnWatchHistoryPage) {
-              console.log('Not on watch history page. Attempting to navigate back...');
-              throw new Error('Navigation detected');
-            }
-            
-            // Update progress indicator
-            await page.evaluate((attempt, maxAttempts) => {
-              if (window.updateScrollProgress) {
-                const percent = Math.min(Math.round((attempt / maxAttempts) * 100), 99);
-                window.updateScrollProgress(percent);
-              }
-            }, scrollAttempts, maxScrollAttempts).catch(e => {
-              console.warn('Error updating progress indicator:', e.message);
-            });
-            
-            // Use a more human-like scrolling pattern
-            // First, scroll down a bit
-            await page.evaluate(() => {
-              // Scroll down by a viewport height
-              const viewportHeight = window.innerHeight;
-              const currentPosition = window.pageYOffset;
-              window.scrollTo({
-                top: currentPosition + viewportHeight * 0.8,
-                behavior: 'smooth'
-              });
-            }).catch(e => {
-              console.warn('Error during first scroll step:', e.message);
-              throw e; // Re-throw to trigger recovery
-            });
-            
-            // Wait longer between scroll operations to ensure content loads
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            
-            // Then scroll a bit more
-            await page.evaluate(() => {
-              // Scroll down by another viewport height
-              const viewportHeight = window.innerHeight;
-              const currentPosition = window.pageYOffset;
-              window.scrollTo({
-                top: currentPosition + viewportHeight * 0.8,
-                behavior: 'smooth'
-              });
-            }).catch(e => {
-              console.warn('Error during second scroll step:', e.message);
-              throw e; // Re-throw to trigger recovery
-            });
-            
-            // Wait again
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            
-            // Finally, scroll to the bottom
-            await page.evaluate(() => {
-              // Scroll to the bottom
-              window.scrollTo({
-                top: document.body.scrollHeight,
-                behavior: 'smooth'
-              });
-            }).catch(e => {
-              console.warn('Error during final scroll step:', e.message);
-              throw e; // Re-throw to trigger recovery
-            });
-          } catch (scrollError) {
-            console.warn(`Error during scroll operation: ${scrollError.message}`);
-            throw scrollError; // Re-throw to trigger the recovery process
+          // First check if we're still on the watch history page
+          const isOnWatchHistoryPage = await page.evaluate(() => {
+            return window.location.href.includes('watch-history');
+          }).catch(() => false);
+          
+          if (!isOnWatchHistoryPage) {
+            console.log('Not on watch history page. Attempting to navigate back...');
+            throw new Error('Navigation detected');
           }
           
-          // Wait longer after scrolling to allow content to load
-          console.log(`Waiting for content to load after scroll attempt ${scrollAttempts}...`);
-          await new Promise(resolve => setTimeout(resolve, 8000)); // Increased wait time to 8 seconds
-          
-          // Check if we're still on the watch history page
-          const stillOnWatchHistoryPage = await page.evaluate(() => {
-            return window.location.href.includes('watch-history');
+          // Scroll to bottom - simple and direct
+          await page.evaluate(() => {
+            window.scrollTo(0, document.body.scrollHeight);
           });
           
-          if (!stillOnWatchHistoryPage) {
-            console.log('Navigation detected during scrolling. Returning to watch history page...');
-            // Use a simpler URL and more relaxed navigation options
-            const simpleWatchHistoryUrl = 'https://www.primevideo.com/settings/watch-history';
-            console.log(`Attempting recovery during scrolling: Navigating to ${simpleWatchHistoryUrl}...`);
-            
-            // Use a longer timeout and more relaxed waitUntil condition
-            await page.goto(simpleWatchHistoryUrl, {
-              timeout: 60000,
-              waitUntil: 'domcontentloaded'
-            });
-            
-            // Wait longer for the page to stabilize
-            await new Promise(resolve => setTimeout(resolve, 5000));
+          // Wait a long time for content to load (15 seconds)
+          console.log('Waiting 15 seconds for content to load...');
+          await new Promise(resolve => setTimeout(resolve, 15000));
+          
+          // Every 5 attempts, try to find and click "Load More" buttons
+          if (scrollAttempts % 5 === 0) {
+            console.log('Checking for "Load More" buttons...');
+            try {
+              const clickedButton = await page.evaluate(() => {
+                // Common selectors for load more buttons
+                const loadMoreSelectors = [
+                  'button[data-automation-id*="load-more"]',
+                  'button:contains("Load More")',
+                  'button:contains("Show More")',
+                  'a:contains("Load More")',
+                  'a:contains("Show More")',
+                  'div[role="button"]:contains("Load More")',
+                  'div[role="button"]:contains("Show More")',
+                  '.load-more',
+                  '.show-more',
+                  '[data-testid*="load-more"]',
+                  '[data-testid*="show-more"]',
+                  '[class*="loadMore"]',
+                  '[class*="showMore"]'
+                ];
+                
+                // Try each selector
+                for (const selector of loadMoreSelectors) {
+                  try {
+                    const loadMoreElements = document.querySelectorAll(selector);
+                    for (const element of loadMoreElements) {
+                      // Check if the element is visible
+                      const rect = element.getBoundingClientRect();
+                      const isVisible = rect.top >= 0 && rect.left >= 0 &&
+                                       rect.bottom <= window.innerHeight &&
+                                       rect.right <= window.innerWidth;
+                      
+                      if (isVisible && element.offsetParent !== null) {
+                        console.log('Found and clicking "Load More" button');
+                        element.click();
+                        return true; // Exit after clicking one button
+                      }
+                    }
+                  } catch (e) {
+                    // Ignore errors for individual selectors
+                  }
+                }
+                return false;
+              });
+              
+              if (clickedButton) {
+                console.log('Clicked a "Load More" button, waiting for content to load...');
+                await new Promise(resolve => setTimeout(resolve, 10000)); // Wait longer after clicking
+              }
+            } catch (buttonError) {
+              console.warn('Error checking for load more buttons:', buttonError.message);
+            }
           }
           
-          // Get new height with error handling
-          try {
-            currentHeight = await page.evaluate(() => document.body.scrollHeight);
-            console.log(`Scroll attempt ${scrollAttempts}: Previous height: ${previousHeight}, Current height: ${currentHeight}`);
-            
-            // Check for "Load More" or pagination buttons and click them if found
-            await page.evaluate(() => {
-              // Common selectors for load more buttons
-              const loadMoreSelectors = [
-                'button[data-automation-id*="load-more"]',
-                'button:contains("Load More")',
-                'button:contains("Show More")',
-                'a:contains("Load More")',
-                'a:contains("Show More")',
-                'div[role="button"]:contains("Load More")',
-                'div[role="button"]:contains("Show More")',
-                '.load-more',
-                '.show-more',
-                '[data-testid*="load-more"]',
-                '[data-testid*="show-more"]',
-                '[class*="loadMore"]',
-                '[class*="showMore"]'
-              ];
+          // Get new height
+          currentHeight = await page.evaluate(() => document.body.scrollHeight);
+          console.log(`Scroll attempt ${scrollAttempts}: Previous height: ${previousHeight}, Current height: ${currentHeight}`);
+          
+          // Every 10 attempts, count items to show progress
+          if (scrollAttempts % 10 === 0) {
+            try {
+              const itemCount = await page.evaluate(() => {
+                // Count all date sections
+                const dateSections = document.querySelectorAll('div[data-automation-id=activity-history-items] > ul > li');
+                let totalItems = 0;
+                
+                // Count items in each date section
+                dateSections.forEach(section => {
+                  const items = section.querySelector('ul')?.querySelectorAll('li') || [];
+                  totalItems += items.length;
+                });
+                
+                return {
+                  dateSections: dateSections.length,
+                  totalItems: totalItems
+                };
+              });
               
-              // Try each selector
-              for (const selector of loadMoreSelectors) {
-                try {
-                  const loadMoreElements = document.querySelectorAll(selector);
-                  for (const element of loadMoreElements) {
-                    // Check if the element is visible
-                    const rect = element.getBoundingClientRect();
-                    const isVisible = rect.top >= 0 && rect.left >= 0 &&
-                                     rect.bottom <= window.innerHeight &&
-                                     rect.right <= window.innerWidth;
-                    
-                    if (isVisible && element.offsetParent !== null) {
-                      console.log('Found and clicking "Load More" button');
-                      element.click();
-                      return true; // Exit after clicking one button
-                    }
-                  }
-                } catch (e) {
-                  // Ignore errors for individual selectors
-                }
+              console.log(`Current progress: ${itemCount.dateSections} date sections, ${itemCount.totalItems} total items`);
+              
+              // If we have 300+ items, we can stop
+              if (itemCount.totalItems >= 300) {
+                console.log(`Found ${itemCount.totalItems} items, which is >= 300. Stopping scrolling.`);
+                break;
               }
-              return false;
-            }).catch(e => {
-              console.warn('Error checking for load more buttons:', e.message);
-            });
-          } catch (heightError) {
-            console.warn(`Error getting page height: ${heightError.message}`);
-            throw heightError; // Re-throw to trigger recovery
+            } catch (countError) {
+              console.warn('Error counting items:', countError.message);
+            }
           }
         } catch (scrollError) {
           console.warn(`Error during scrolling attempt ${scrollAttempts}:`, scrollError.message);
@@ -1318,6 +1209,34 @@ async function scrapeWatchHistory() {
             }
           }
         }
+      }
+      
+      // Final item count
+      try {
+        const finalCount = await page.evaluate(() => {
+          // Count all date sections
+          const dateSections = document.querySelectorAll('div[data-automation-id=activity-history-items] > ul > li');
+          let totalItems = 0;
+          
+          // Count items in each date section
+          dateSections.forEach(section => {
+            const items = section.querySelector('ul')?.querySelectorAll('li') || [];
+            totalItems += items.length;
+          });
+          
+          return {
+            dateSections: dateSections.length,
+            totalItems: totalItems
+          };
+        });
+        
+        console.log(`Scrolling complete. Final stats - Date sections: ${finalCount.dateSections}, Items: ${finalCount.totalItems}`);
+        
+        if (scrollAttempts >= maxScrollAttempts) {
+          console.log(`Reached maximum scroll attempts (${maxScrollAttempts}). Proceeding with extraction.`);
+        }
+      } catch (finalCountError) {
+        console.warn('Error getting final item count:', finalCountError.message);
       }
       
       if (scrollAttempts >= maxScrollAttempts) {
