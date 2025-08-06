@@ -33,7 +33,8 @@ const simklClient = {
 
   search: async function(title, type, year) {
     if (!this.apiKey) {
-      throw new Error('Simkl API key not configured');
+      console.warn('Simkl API key not configured');
+      return [];
     }
 
     try {
@@ -52,7 +53,8 @@ const simklClient = {
       }
 
       if (!response.ok) {
-        throw new Error(`Simkl API error: ${response.statusText}`);
+        console.warn(`Simkl API error: ${response.statusText}`);
+        return [];
       }
 
       const data = await response.json();
@@ -132,97 +134,169 @@ const tvdbClient = {
       throw new Error('TVDB API key not configured');
     }
 
-    const response = await fetch(`${this.baseUrl}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        apikey: this.apiKey
-      })
-    });
+    // Log detailed information for debugging
+    console.log('Authenticating with TVDB API...');
+    
+    try {
+      // Updated authentication endpoint and parameters based on latest TVDB API v4
+      const response = await fetch(`${this.baseUrl}/v4/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          apikey: this.apiKey
+        })
+      });
 
-    if (!response.ok) {
-      throw new Error(`TVDB authentication failed: ${response.statusText}`);
+      // Log response status for debugging
+      console.log(`TVDB authentication response status: ${response.status} ${response.statusText}`);
+      
+      if (!response.ok) {
+        // Try to get more detailed error information
+        let errorDetails = '';
+        try {
+          const errorData = await response.json();
+          errorDetails = JSON.stringify(errorData);
+        } catch (e) {
+          errorDetails = 'Could not parse error response';
+        }
+        
+        throw new Error(`TVDB authentication failed: ${response.status} ${response.statusText}. Details: ${errorDetails}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.token) {
+        console.warn('TVDB authentication succeeded but no token was returned:', JSON.stringify(data));
+        throw new Error('TVDB authentication response did not contain a token');
+      }
+      
+      console.log('TVDB authentication successful, token received');
+      this.token = data.token;
+      return this.token;
+    } catch (error) {
+      console.error('TVDB authentication error:', error.message);
+      throw error;
     }
-
-    const data = await response.json();
-    this.token = data.token;
-    return this.token;
   },
 
   search: async function(title, type, year) {
     if (!this.token) {
-      await this.authenticate();
+      try {
+        await this.authenticate();
+      } catch (authError) {
+        console.warn(`TVDB authentication failed, skipping search: ${authError.message}`);
+        return { data: [] };
+      }
     }
 
-    const endpoint = type === 'movie' ? 'movies' : 'series';
-    const response = await fetch(
-      `${this.baseUrl}/search/${endpoint}?name=${encodeURIComponent(title)}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${this.token}`,
-          'Accept': 'application/json'
+    try {
+      const endpoint = type === 'movie' ? 'movies' : 'series';
+      console.log(`Searching TVDB for ${type} "${title}"...`);
+      
+      // Updated to use v4 API endpoints
+      const response = await fetch(
+        `${this.baseUrl}/v4/search?query=${encodeURIComponent(title)}&type=${endpoint}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.token}`,
+            'Accept': 'application/json'
+          }
+        }
+      );
+
+      console.log(`TVDB search response status: ${response.status} ${response.statusText}`);
+
+      if (response.status === 401) { // Token expired
+        console.log('TVDB token expired, re-authenticating...');
+        try {
+          await this.authenticate();
+          return this.search(title, type, year);
+        } catch (reAuthError) {
+          console.warn(`TVDB re-authentication failed: ${reAuthError.message}`);
+          return { data: [] };
         }
       }
-    );
 
-    if (response.status === 401) { // Token expired
-      await this.authenticate();
-      return this.search(title, type, year);
+      if (!response.ok) {
+        console.warn(`TVDB API error: ${response.status} ${response.statusText}`);
+        return { data: [] };
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.warn(`TVDB search error: ${error.message}`);
+      return { data: [] };
     }
-
-    if (!response.ok) {
-      throw new Error(`TVDB API error: ${response.statusText}`);
-    }
-
-    return await response.json();
   },
 
   getIds: async function(tvdbId, type) {
     if (!this.token) {
-      await this.authenticate();
-    }
-
-    const endpoint = type === 'movie' ? 'movies' : 'series';
-    const response = await fetch(
-      `${this.baseUrl}/${endpoint}/${tvdbId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${this.token}`,
-          'Accept': 'application/json'
-        }
+      try {
+        await this.authenticate();
+      } catch (authError) {
+        console.warn(`TVDB authentication failed, skipping getIds: ${authError.message}`);
+        return { data: { id: tvdbId } };
       }
-    );
-
-    if (response.status === 401) { // Token expired
-      await this.authenticate();
-      return this.getIds(tvdbId, type);
-    }
-
-    if (!response.ok) {
-      throw new Error(`TVDB API error: ${response.statusText}`);
-    }
-
-    return await response.json();
-  }
-};
-
-// IMDB API Client
-const imdbClient = {
-  apiKey: config.imdbApiKey,
-  baseUrl: 'https://imdb-api.com/en/API',
-
-  search: async function(title, type) {
-    if (!this.apiKey) {
-      // Silently return empty results when API key is not configured
-      return { results: [] };
     }
 
     try {
-      const endpoint = type === 'movie' ? 'SearchMovie' : 'SearchSeries';
-      const response = await fetch(`${this.baseUrl}/${endpoint}/${this.apiKey}/${encodeURIComponent(title)}`);
+      const endpoint = type === 'movie' ? 'movies' : 'series';
+      console.log(`Getting TVDB details for ${type} ID ${tvdbId}...`);
+      
+      // Updated to use v4 API endpoints
+      const response = await fetch(
+        `${this.baseUrl}/v4/${endpoint}/${tvdbId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.token}`,
+            'Accept': 'application/json'
+          }
+        }
+      );
+
+      console.log(`TVDB getIds response status: ${response.status} ${response.statusText}`);
+
+      if (response.status === 401) { // Token expired
+        console.log('TVDB token expired, re-authenticating...');
+        try {
+          await this.authenticate();
+          return this.getIds(tvdbId, type);
+        } catch (reAuthError) {
+          console.warn(`TVDB re-authentication failed: ${reAuthError.message}`);
+          return { data: { id: tvdbId } };
+        }
+      }
+
+      if (!response.ok) {
+        console.warn(`TVDB API error: ${response.status} ${response.statusText}`);
+        return { data: { id: tvdbId } };
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.warn(`TVDB getIds error: ${error.message}`);
+      return { data: { id: tvdbId } };
+    }
+  }
+};
+
+// IMDB API Client (using free imdbapi.dev API)
+const imdbClient = {
+  baseUrl: 'https://imdbapi.dev',
+
+  search: async function(title, type) {
+    try {
+      // Construct search URL with type filter
+      const typeParam = type === 'movie' ? 'movie' : 'tvSeries';
+      const response = await fetch(`${this.baseUrl}/search?query=${encodeURIComponent(title)}&type=${typeParam}`, {
+        // Add timeout to prevent hanging
+        timeout: 5000
+      });
 
       if (response.status === 429) {
         console.warn('IMDB API rate limit hit, waiting before retry');
@@ -231,11 +305,26 @@ const imdbClient = {
       }
 
       if (!response.ok) {
-        throw new Error(`IMDB API error: ${response.statusText}`);
+        console.warn(`IMDB API error: ${response.status} ${response.statusText}`);
+        return { results: [] };
       }
 
       const data = await response.json();
-      return data;
+      
+      // Check if data has the expected structure
+      if (!data || !data.data || !Array.isArray(data.data)) {
+        console.warn('IMDB API returned unexpected data structure');
+        return { results: [] };
+      }
+      
+      // Transform the response to match our expected format
+      return {
+        results: data.data.map(item => ({
+          id: item.id,
+          title: item.title,
+          description: item.year ? `(${item.year})` : ''
+        }))
+      };
     } catch (error) {
       console.warn(`IMDB search failed: ${error.message}`);
       return { results: [] };
@@ -243,24 +332,78 @@ const imdbClient = {
   },
 
   getDetails: async function(imdbId) {
-    if (!this.apiKey) {
-      throw new Error('IMDB API key not configured');
+    try {
+      const response = await fetch(`${this.baseUrl}/title/${imdbId}`, {
+        // Add timeout to prevent hanging
+        timeout: 5000
+      });
+
+      if (!response.ok) {
+        console.warn(`IMDB API error: ${response.status} ${response.statusText}`);
+        return { id: imdbId };
+      }
+
+      const data = await response.json();
+      
+      // Check if data has the expected structure
+      if (!data || !data.id) {
+        console.warn('IMDB API returned unexpected data structure');
+        return { id: imdbId };
+      }
+      
+      // Transform the response to match our expected format
+      return {
+        id: data.id,
+        title: data.title,
+        year: data.year,
+        type: data.type
+      };
+    } catch (error) {
+      console.warn(`IMDB details failed: ${error.message}`);
+      return { id: imdbId };
     }
-
-    const response = await fetch(`${this.baseUrl}/Title/${this.apiKey}/${imdbId}`);
-
-    if (!response.ok) {
-      throw new Error(`IMDB API error: ${response.statusText}`);
-    }
-
-    return await response.json();
   }
 };
 
 // MyAnimeList API Client
 const malClient = {
   clientId: config.malClientId,
+  clientSecret: config.malClientSecret,
   baseUrl: 'https://api.myanimelist.net/v2',
+  accessToken: null,
+
+  // Get OAuth token if using Client Secret
+  getAccessToken: async function() {
+    if (!this.clientId || !this.clientSecret) {
+      return null;
+    }
+
+    try {
+      const response = await fetch('https://myanimelist.net/v1/oauth2/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          client_id: this.clientId,
+          client_secret: this.clientSecret,
+          grant_type: 'client_credentials'
+        })
+      });
+
+      if (!response.ok) {
+        console.warn(`MAL OAuth error: ${response.statusText}`);
+        return null;
+      }
+
+      const data = await response.json();
+      this.accessToken = data.access_token;
+      return this.accessToken;
+    } catch (error) {
+      console.warn(`MAL OAuth failed: ${error.message}`);
+      return null;
+    }
+  },
 
   search: async function(title) {
     if (!this.clientId) {
@@ -269,13 +412,37 @@ const malClient = {
     }
 
     try {
+      // Determine which auth method to use
+      let headers = {};
+      
+      if (this.accessToken) {
+        // Use OAuth token if available
+        headers = {
+          'Authorization': `Bearer ${this.accessToken}`
+        };
+      } else if (this.clientSecret) {
+        // Try to get an access token if we have client secret
+        const token = await this.getAccessToken();
+        if (token) {
+          headers = {
+            'Authorization': `Bearer ${token}`
+          };
+        } else {
+          // Fall back to Client ID if token acquisition fails
+          headers = {
+            'X-MAL-CLIENT-ID': this.clientId
+          };
+        }
+      } else {
+        // Use Client ID only
+        headers = {
+          'X-MAL-CLIENT-ID': this.clientId
+        };
+      }
+
       const response = await fetch(
         `${this.baseUrl}/anime?q=${encodeURIComponent(title)}&limit=5&fields=id,title,start_date`,
-        {
-          headers: {
-            'X-MAL-CLIENT-ID': this.clientId
-          }
-        }
+        { headers }
       );
 
       if (response.status === 429) {
@@ -301,13 +468,37 @@ const malClient = {
       throw new Error('MyAnimeList Client ID not configured');
     }
 
+    // Determine which auth method to use
+    let headers = {};
+    
+    if (this.accessToken) {
+      // Use OAuth token if available
+      headers = {
+        'Authorization': `Bearer ${this.accessToken}`
+      };
+    } else if (this.clientSecret) {
+      // Try to get an access token if we have client secret
+      const token = await this.getAccessToken();
+      if (token) {
+        headers = {
+          'Authorization': `Bearer ${token}`
+        };
+      } else {
+        // Fall back to Client ID if token acquisition fails
+        headers = {
+          'X-MAL-CLIENT-ID': this.clientId
+        };
+      }
+    } else {
+      // Use Client ID only
+      headers = {
+        'X-MAL-CLIENT-ID': this.clientId
+      };
+    }
+
     const response = await fetch(
       `${this.baseUrl}/anime/${malId}?fields=id,title,start_date,mean,media_type,num_episodes`,
-      {
-        headers: {
-          'X-MAL-CLIENT-ID': this.clientId
-        }
-      }
+      { headers }
     );
 
     if (!response.ok) {
@@ -330,7 +521,8 @@ const lookupMetadata = async (title, type, year) => {
     MAL_ID: '',
     title: title,
     year: year,
-    type: type === 'movie' ? 'movie' : 'tv'
+    type: type === 'movie' ? 'movie' : 'tv',
+    releaseYear: '' // Will be populated from API data
   };
 
   // Try each API in priority order
@@ -339,13 +531,24 @@ const lookupMetadata = async (title, type, year) => {
       switch(api) {
         case 'simkl':
           const simklSearch = await simklClient.search(title, type, year);
-          if (simklSearch.length > 0) {
-            const simklData = await simklClient.getIds(simklSearch[0].ids.simkl, type);
-            result.simkl_id = simklData.ids.simkl;
-            result.TVDB_ID = simklData.ids.tvdb || '';
-            result.TMDB = simklData.ids.tmdb || '';
-            result.IMDB_ID = simklData.ids.imdb || '';
-            result.MAL_ID = simklData.ids.mal || '';
+          if (simklSearch && simklSearch.length > 0 && simklSearch[0].ids && simklSearch[0].ids.simkl) {
+            try {
+              const simklData = await simklClient.getIds(simklSearch[0].ids.simkl, type);
+              if (simklData && simklData.ids) {
+                result.simkl_id = simklData.ids.simkl || '';
+                result.TVDB_ID = simklData.ids.tvdb || '';
+                result.TMDB = simklData.ids.tmdb || '';
+                result.IMDB_ID = simklData.ids.imdb || '';
+                result.MAL_ID = simklData.ids.mal || '';
+                
+                // Extract release year from Simkl data
+                if (simklData.year) {
+                  result.releaseYear = simklData.year.toString();
+                }
+              }
+            } catch (error) {
+              console.warn(`Error getting Simkl IDs: ${error.message}`);
+            }
           }
           break;
         case 'tmdb':
@@ -355,6 +558,17 @@ const lookupMetadata = async (title, type, year) => {
               const tmdbData = await tmdbClient.getIds(tmdbSearch.results[0].id, type);
               result.TMDB = tmdbData.id;
               result.IMDB_ID = tmdbData.imdb_id || '';
+              
+              // Extract release year from TMDB data if not already set from Simkl
+              if (!result.releaseYear && tmdbSearch.results[0]) {
+                const dateField = type === 'movie' ? 'release_date' : 'first_air_date';
+                if (tmdbSearch.results[0][dateField]) {
+                  const yearMatch = tmdbSearch.results[0][dateField].match(/^(\d{4})/);
+                  if (yearMatch) {
+                    result.releaseYear = yearMatch[1];
+                  }
+                }
+              }
             }
           }
           break;
@@ -409,46 +623,122 @@ const lookupMetadata = async (title, type, year) => {
   return result;
 };
 
-// Parse date string to ISO format
+// Parse date string to ISO format and convert to dd/MM/YYYY format for Simkl
 const parseDate = (dateString) => {
   // Handle various date formats
   const date = new Date(dateString);
   if (!isNaN(date.getTime())) {
-    return date.toISOString().split('T')[0];
+    // Format as dd/MM/YYYY for Simkl
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
   }
   
-  // If standard parsing fails, try manual parsing
-  const monthNames = {
+  // If standard parsing fails, try manual parsing with support for multiple languages
+  
+  // English month names
+  const englishMonths = {
     'january': 0, 'february': 1, 'march': 2, 'april': 3, 'may': 4, 'june': 5,
     'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11
   };
   
-  // Try to match "Month Day, Year" format
-  const monthDayYearRegex = /([a-zA-Z]+)\s+(\d{1,2}),\s+(\d{4})/;
+  // Italian month names
+  const italianMonths = {
+    'gennaio': 0, 'febbraio': 1, 'marzo': 2, 'aprile': 3, 'maggio': 4, 'giugno': 5,
+    'luglio': 6, 'agosto': 7, 'settembre': 8, 'ottobre': 9, 'novembre': 10, 'dicembre': 11
+  };
+  
+  // Spanish month names
+  const spanishMonths = {
+    'enero': 0, 'febrero': 1, 'marzo': 2, 'abril': 3, 'mayo': 4, 'junio': 5,
+    'julio': 6, 'agosto': 7, 'septiembre': 8, 'octubre': 9, 'noviembre': 10, 'diciembre': 11
+  };
+  
+  // French month names
+  const frenchMonths = {
+    'janvier': 0, 'février': 1, 'mars': 2, 'avril': 3, 'mai': 4, 'juin': 5,
+    'juillet': 6, 'août': 7, 'septembre': 8, 'octobre': 9, 'novembre': 10, 'décembre': 11
+  };
+  
+  // German month names
+  const germanMonths = {
+    'januar': 0, 'februar': 1, 'märz': 2, 'april': 3, 'mai': 4, 'juni': 5,
+    'juli': 6, 'august': 7, 'september': 8, 'oktober': 9, 'november': 10, 'dezember': 11
+  };
+  
+  // Combine all month dictionaries
+  const allMonths = {
+    ...englishMonths,
+    ...italianMonths,
+    ...spanishMonths,
+    ...frenchMonths,
+    ...germanMonths
+  };
+  
+  // Try to match "Day Month Year" format (common in European languages)
+  // This will match formats like "12 gennaio 2023" (Italian) or "12 January 2023" (English)
+  const dayMonthYearRegex = /(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/i;
+  const dayMonthYearMatch = dateString.match(dayMonthYearRegex);
+  
+  if (dayMonthYearMatch) {
+    const [_, day, month, year] = dayMonthYearMatch;
+    const monthIndex = allMonths[month.toLowerCase()];
+    if (monthIndex !== undefined) {
+      // Format as dd/MM/YYYY for Simkl
+      const formattedDay = String(parseInt(day)).padStart(2, '0');
+      const formattedMonth = String(monthIndex + 1).padStart(2, '0');
+      return `${formattedDay}/${formattedMonth}/${year}`;
+    }
+  }
+  
+  // Try to match "Month Day, Year" format (common in US English)
+  const monthDayYearRegex = /([a-zA-Z]+)\s+(\d{1,2}),\s+(\d{4})/i;
   const monthDayYearMatch = dateString.match(monthDayYearRegex);
   
   if (monthDayYearMatch) {
     const [_, month, day, year] = monthDayYearMatch;
-    const monthIndex = monthNames[month.toLowerCase()];
+    const monthIndex = allMonths[month.toLowerCase()];
     if (monthIndex !== undefined) {
-      const parsedDate = new Date(parseInt(year), monthIndex, parseInt(day));
-      return parsedDate.toISOString().split('T')[0];
+      // Format as dd/MM/YYYY for Simkl
+      const formattedDay = String(parseInt(day)).padStart(2, '0');
+      const formattedMonth = String(monthIndex + 1).padStart(2, '0');
+      return `${formattedDay}/${formattedMonth}/${year}`;
     }
   }
   
+  // Try to match ISO format (YYYY-MM-DD)
+  const isoMatch = dateString.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [_, year, month, day] = isoMatch;
+    return `${day}/${month}/${year}`;
+  }
+  
   console.warn(`Could not parse date: ${dateString}`);
-  return dateString; // Return original if parsing fails
+  
+  // If all parsing fails, try to extract just numbers as day, month, year
+  const numbers = dateString.match(/\d+/g);
+  if (numbers && numbers.length >= 3) {
+    // Assume the format is day, month, year
+    const day = String(parseInt(numbers[0])).padStart(2, '0');
+    const month = String(parseInt(numbers[1])).padStart(2, '0');
+    const year = numbers[2].length === 2 ? `20${numbers[2]}` : numbers[2];
+    return `${day}/${month}/${year}`;
+  }
+  
+  // If everything fails, return a placeholder date
+  return "01/01/2023";
 };
 
 // Process a watch history item
 const processItem = async (dateWatched, title, episodeTitle) => {
   const mediaType = episodeTitle ? 'tv' : 'movie';
   const yearMatch = title.match(/\((\d{4})\)/);
-  const year = yearMatch ? yearMatch[1] : '';
+  const yearFromTitle = yearMatch ? yearMatch[1] : '';
   const cleanTitle = title.replace(/\s*\(\d{4}\)$/, '');
   
   // Get metadata
-  const metadata = await lookupMetadata(cleanTitle, mediaType, year);
+  const metadata = await lookupMetadata(cleanTitle, mediaType, yearFromTitle);
   
   // Format episode number if available
   let lastEpWatched = '';
@@ -459,19 +749,16 @@ const processItem = async (dateWatched, title, episodeTitle) => {
     }
   }
   
-  // Format date
-  const watchedDate = parseDate(dateWatched);
-  
-  // Format according to import-data.csv example
-  // Convert date to MM/DD/YYYY format as in the example
-  const dateParts = watchedDate.split('-');
-  const formattedDate = dateParts.length === 3 ?
-    `${dateParts[1]}/${dateParts[2]}/${dateParts[0]}` : watchedDate;
+  // Format date directly to dd/MM/YYYY format for Simkl
+  const formattedDate = parseDate(dateWatched);
   
   // Determine watchlist status based on media type
   // In the example: movies are "completed", TV shows have various statuses
   const watchlistStatus = mediaType === 'movie' ? 'completed' :
     (lastEpWatched ? 'watching' : 'completed');
+  
+  // Use API-provided year if available, otherwise fall back to year from title
+  const year = metadata.releaseYear || yearFromTitle;
   
   // Return formatted item matching import-data.csv format
   return [
@@ -491,9 +778,184 @@ const processItem = async (dateWatched, title, episodeTitle) => {
   ];
 };
 
+// Validate API keys before starting
+async function validateApiKeys() {
+  console.log('Validating API keys...');
+  const validationResults = {
+    simkl: false,
+    tmdb: false,
+    tvdb: false,
+    imdb: false,
+    mal: false
+  };
+  
+  // Validate Simkl API key
+  if (config.simklClientId) {
+    try {
+      const response = await fetch('https://api.simkl.com/search/movie?q=inception', {
+        headers: {
+          'Content-Type': 'application/json',
+          'simkl-api-key': config.simklClientId
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        validationResults.simkl = Array.isArray(data) && data.length > 0;
+      } else {
+        validationResults.simkl = false;
+      }
+      
+      console.log(`Simkl API key: ${validationResults.simkl ? 'Valid' : 'Invalid'}`);
+    } catch (error) {
+      console.warn(`Simkl API key validation failed: ${error.message}`);
+    }
+  } else {
+    console.log('Simkl API key not configured, skipping validation');
+  }
+  
+  // Validate TMDB API key
+  if (config.tmdbApiKey) {
+    try {
+      const response = await fetch(`https://api.themoviedb.org/3/movie/550?api_key=${config.tmdbApiKey}`);
+      validationResults.tmdb = response.ok;
+      console.log(`TMDB API key: ${validationResults.tmdb ? 'Valid' : 'Invalid'}`);
+    } catch (error) {
+      console.warn(`TMDB API key validation failed: ${error.message}`);
+    }
+  } else {
+    console.log('TMDB API key not configured, skipping validation');
+  }
+  
+  // Validate TVDB API key
+  if (config.tvdbApiKey) {
+    try {
+      console.log('Validating TVDB API key...');
+      await tvdbClient.authenticate();
+      validationResults.tvdb = true;
+      console.log('TVDB API key: Valid');
+    } catch (error) {
+      console.warn(`TVDB API key validation failed: ${error.message}`);
+      console.log('TVDB API key appears to be invalid or the API has changed. Disabling TVDB API.');
+      validationResults.tvdb = false;
+    }
+  } else {
+    console.log('TVDB API key not configured, skipping validation');
+  }
+  
+  // Validate IMDB API (imdbapi.dev doesn't require an API key)
+  try {
+    // Try with a simple test query
+    console.log('Testing imdbapi.dev availability...');
+    const response = await fetch('https://imdbapi.dev/search?query=inception&type=movie', {
+      // Add timeout to prevent hanging
+      timeout: 5000
+    }).catch(e => {
+      console.warn(`IMDB API fetch error: ${e.message}`);
+      return { ok: false };
+    });
+    
+    validationResults.imdb = response.ok;
+    console.log(`IMDB API (imdbapi.dev): ${validationResults.imdb ? 'Available' : 'Unavailable'}`);
+    
+    // Even if validation fails, we'll still include IMDB in the priority order
+    // since the API might become available later
+    if (!validationResults.imdb) {
+      console.log('IMDB API appears to be unavailable, but will be kept in priority order for potential later use');
+      validationResults.imdb = true; // Force to true to keep in priority order
+    }
+  } catch (error) {
+    console.warn(`IMDB API validation failed: ${error.message}`);
+    // Still keep IMDB in priority order
+    console.log('IMDB API validation failed, but will be kept in priority order for potential later use');
+    validationResults.imdb = true;
+  }
+  
+  // Validate MyAnimeList API credentials
+  if (config.malClientId) {
+    try {
+      // Check if we have both Client ID and Client Secret
+      if (config.malClientSecret) {
+        console.log('MyAnimeList: Found both Client ID and Client Secret, validating OAuth...');
+        // Try OAuth authentication
+        const response = await fetch('https://myanimelist.net/v1/oauth2/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams({
+            client_id: config.malClientId,
+            client_secret: config.malClientSecret,
+            grant_type: 'client_credentials'
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.access_token) {
+            validationResults.mal = true;
+            console.log('MyAnimeList OAuth: Valid (using Client ID and Secret)');
+            // Store the token in the MAL client for future use
+            malClient.accessToken = data.access_token;
+          } else {
+            validationResults.mal = false;
+            console.log('MyAnimeList OAuth: Invalid (no access token received)');
+          }
+        } else {
+          // Fall back to Client ID only
+          console.log('MyAnimeList OAuth failed, falling back to Client ID only...');
+          const clientIdResponse = await fetch('https://api.myanimelist.net/v2/anime?q=test', {
+            headers: {
+              'X-MAL-CLIENT-ID': config.malClientId
+            }
+          });
+          validationResults.mal = clientIdResponse.ok;
+          console.log(`MyAnimeList Client ID only: ${validationResults.mal ? 'Valid' : 'Invalid'}`);
+        }
+      } else {
+        // Client ID only
+        const response = await fetch('https://api.myanimelist.net/v2/anime?q=test', {
+          headers: {
+            'X-MAL-CLIENT-ID': config.malClientId
+          }
+        });
+        validationResults.mal = response.ok;
+        console.log(`MyAnimeList Client ID: ${validationResults.mal ? 'Valid' : 'Invalid'}`);
+      }
+    } catch (error) {
+      console.warn(`MyAnimeList API validation failed: ${error.message}`);
+    }
+  } else {
+    console.log('MyAnimeList Client ID not configured, skipping validation');
+  }
+  
+  // Update priority order based on validation results
+  const validApis = [];
+  for (const api of config.priorityOrder) {
+    if (validationResults[api]) {
+      validApis.push(api);
+    } else {
+      console.log(`Removing ${api} from priority order due to invalid API key`);
+    }
+  }
+  
+  if (validApis.length === 0) {
+    console.warn('No valid API keys found. Metadata lookup will be limited.');
+  } else {
+    console.log(`Using the following APIs in order: ${validApis.join(', ')}`);
+    config.priorityOrder = validApis;
+  }
+  
+  return validationResults;
+}
+
 // Main function to scrape Prime Video watch history
 async function scrapeWatchHistory() {
   console.log('Starting Prime Video watch history export...');
+  
+  // Validate API keys before starting
+  console.log('Validating API keys...');
+  await validateApiKeys();
   
   const browser = await puppeteer.launch({
     headless: false, // Set to true for production
@@ -996,16 +1458,21 @@ async function scrapeWatchHistory() {
     let scrollAttempts = 0;
     let noChangeCount = 0;
     const maxScrollAttempts = 1000; // Extremely high limit to ensure we load everything
-    const maxNoChangeCount = 10; // Number of times height can remain unchanged before considering complete
+    const maxNoChangeCount = 3; // Reduced from 10 to 3 as requested
     
     try {
-      console.log('Implementing simple, brute-force scrolling to load all items...');
+      console.log('Implementing resilient scrolling to load all items...');
       
-      // First, get initial height
-      currentHeight = await page.evaluate(() => document.body.scrollHeight);
-      console.log(`Initial page height: ${currentHeight}`);
+      // First, get initial height with error handling
+      try {
+        currentHeight = await page.evaluate(() => document.body.scrollHeight);
+        console.log(`Initial page height: ${currentHeight}`);
+      } catch (heightError) {
+        console.warn(`Error getting initial height: ${heightError.message}`);
+        currentHeight = 10000; // Use a default value to start
+      }
       
-      // Simple brute-force scrolling loop
+      // More resilient scrolling loop
       while ((previousHeight !== currentHeight || noChangeCount < maxNoChangeCount) && scrollAttempts < maxScrollAttempts) {
         if (previousHeight === currentHeight) {
           noChangeCount++;
@@ -1018,27 +1485,58 @@ async function scrapeWatchHistory() {
         scrollAttempts++;
         
         try {
-          // Simple scroll to bottom
+          // More resilient scroll approach
           console.log(`Scroll attempt ${scrollAttempts}/${maxScrollAttempts}`);
           
-          // First check if we're still on the watch history page
-          const isOnWatchHistoryPage = await page.evaluate(() => {
-            return window.location.href.includes('watch-history');
-          }).catch(() => false);
+          // Use a more resilient approach to check if we're on the watch history page
+          let isOnWatchHistoryPage = false;
+          try {
+            const url = await page.url();
+            isOnWatchHistoryPage = url.includes('watch-history');
+          } catch (urlError) {
+            console.warn(`Error checking URL: ${urlError.message}`);
+            // Assume we need to recover
+            throw new Error('Navigation check failed');
+          }
           
           if (!isOnWatchHistoryPage) {
             console.log('Not on watch history page. Attempting to navigate back...');
             throw new Error('Navigation detected');
           }
           
-          // Scroll to bottom - simple and direct
-          await page.evaluate(() => {
-            window.scrollTo(0, document.body.scrollHeight);
-          });
+          // Try multiple scrolling methods with error handling
+          try {
+            // Method 1: Use keyboard End key (more reliable in some cases)
+            await page.keyboard.press('End').catch(e => {
+              console.warn(`Keyboard scroll failed: ${e.message}`);
+            });
+            
+            // Method 2: Use JavaScript scrollTo (fallback)
+            await page.evaluate(() => {
+              return new Promise((resolve) => {
+                window.scrollTo({
+                  top: document.body.scrollHeight,
+                  behavior: 'smooth'
+                });
+                setTimeout(resolve, 100);
+              });
+            }).catch(e => {
+              console.warn(`JavaScript scroll failed: ${e.message}`);
+            });
+            
+            // Method 3: Use mouse wheel simulation (last resort)
+            await page.mouse.wheel({deltaY: 1000}).catch(e => {
+              console.warn(`Mouse wheel scroll failed: ${e.message}`);
+            });
+          } catch (scrollError) {
+            console.warn(`All scroll methods failed: ${scrollError.message}`);
+            // Continue to next iteration, we'll handle this in the outer catch
+            throw scrollError;
+          }
           
-          // Wait a long time for content to load (15 seconds)
-          console.log('Waiting 15 seconds for content to load...');
-          await new Promise(resolve => setTimeout(resolve, 15000));
+          // Reduced wait time from 15 seconds to 2 seconds as requested
+          console.log('Waiting 2 seconds for content to load...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
           
           // Every 5 attempts, try to find and click "Load More" buttons
           if (scrollAttempts % 5 === 0) {
@@ -1088,7 +1586,7 @@ async function scrapeWatchHistory() {
               
               if (clickedButton) {
                 console.log('Clicked a "Load More" button, waiting for content to load...');
-                await new Promise(resolve => setTimeout(resolve, 10000)); // Wait longer after clicking
+                await new Promise(resolve => setTimeout(resolve, 5000)); // Reduced from 10s to 5s
               }
             } catch (buttonError) {
               console.warn('Error checking for load more buttons:', buttonError.message);
@@ -1139,52 +1637,130 @@ async function scrapeWatchHistory() {
                                 scrollError.message.includes('navigation');
           
           if (isContextError) {
-            console.log('Detected execution context error due to navigation. Implementing recovery strategy...');
+            console.log('Detected execution context error due to navigation. Implementing enhanced recovery strategy...');
           }
           
-          // Implement a more robust recovery strategy
+          // Enhanced recovery strategy
           try {
             // First, wait a bit to let any navigation complete
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            await new Promise(resolve => setTimeout(resolve, 5000));
             
             // Check if we're still on a valid page
+            let currentUrl = '';
             try {
-              const url = await page.url();
-              console.log(`Current URL after error: ${url}`);
+              currentUrl = await page.url();
+              console.log(`Current URL after error: ${currentUrl}`);
             } catch (urlError) {
               console.warn('Could not get URL, page might be in an invalid state:', urlError.message);
+              // If we can't get the URL, we need to try a more aggressive recovery
+              currentUrl = '';
             }
             
-            // Use a simpler URL and more relaxed navigation options
-            const simpleWatchHistoryUrl = 'https://www.primevideo.com/settings/watch-history';
-            console.log(`Attempting recovery from scrolling error: Navigating to ${simpleWatchHistoryUrl}...`);
+            // If we're already on the watch history page, try a simpler recovery
+            if (currentUrl.includes('watch-history')) {
+              console.log('Still on watch history page. Attempting simple recovery...');
+              
+              // Try to refresh the page
+              try {
+                await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                console.log('Page refreshed successfully');
+              } catch (refreshError) {
+                console.warn(`Error refreshing page: ${refreshError.message}`);
+                // If refresh fails, try navigation
+                throw new Error('Refresh failed, trying navigation');
+              }
+            } else {
+              // We need to navigate back to the watch history page
+              console.log('Not on watch history page. Attempting navigation recovery...');
+            }
             
-            // Use a longer timeout and more relaxed waitUntil condition
-            await page.goto(simpleWatchHistoryUrl, {
-              timeout: 60000,
-              waitUntil: 'domcontentloaded'
-            });
+            // Try multiple navigation approaches in sequence until one works
+            let navigationSuccess = false;
+            
+            // Approach 1: Direct navigation with relaxed options
+            if (!navigationSuccess) {
+              try {
+                console.log('Trying direct navigation with relaxed options...');
+                await page.goto('https://www.primevideo.com/settings/watch-history', {
+                  timeout: 60000,
+                  waitUntil: 'domcontentloaded'
+                });
+                
+                // Check if navigation was successful
+                const newUrl = await page.url();
+                navigationSuccess = newUrl.includes('watch-history');
+                if (navigationSuccess) {
+                  console.log('Direct navigation successful');
+                } else {
+                  console.log('Direct navigation failed');
+                }
+              } catch (navError) {
+                console.warn(`Direct navigation failed: ${navError.message}`);
+              }
+            }
+            
+            // Approach 2: Try using browser history API
+            if (!navigationSuccess) {
+              try {
+                console.log('Trying browser history API...');
+                await page.evaluate(() => {
+                  window.location.href = 'https://www.primevideo.com/settings/watch-history';
+                  return true;
+                });
+                
+                // Wait for navigation to complete
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                
+                // Check if navigation was successful
+                const newUrl = await page.url();
+                navigationSuccess = newUrl.includes('watch-history');
+                if (navigationSuccess) {
+                  console.log('Browser history API navigation successful');
+                } else {
+                  console.log('Browser history API navigation failed');
+                }
+              } catch (historyError) {
+                console.warn(`Browser history API failed: ${historyError.message}`);
+              }
+            }
+            
+            // Approach 3: Try closing any dialogs and then navigating
+            if (!navigationSuccess) {
+              try {
+                console.log('Trying to close dialogs and then navigate...');
+                await page.evaluate(() => {
+                  // Try to close any dialogs
+                  document.querySelectorAll('button').forEach(button => {
+                    if (button.textContent.includes('Close') ||
+                        button.textContent.includes('Cancel') ||
+                        button.textContent.includes('OK')) {
+                      button.click();
+                    }
+                  });
+                });
+                
+                // Try navigation again
+                await page.goto('https://www.primevideo.com/settings/watch-history', {
+                  timeout: 60000,
+                  waitUntil: 'domcontentloaded'
+                });
+                
+                // Check if navigation was successful
+                const newUrl = await page.url();
+                navigationSuccess = newUrl.includes('watch-history');
+                if (navigationSuccess) {
+                  console.log('Navigation after closing dialogs successful');
+                } else {
+                  console.log('Navigation after closing dialogs failed');
+                }
+              } catch (dialogError) {
+                console.warn(`Dialog closing approach failed: ${dialogError.message}`);
+              }
+            }
             
             // Wait longer for the page to stabilize
             await new Promise(resolve => setTimeout(resolve, 5000));
-            
-            // Check if navigation was successful
-            const newUrl = page.url();
-            console.log(`Recovery navigation result: ${newUrl}`);
-            
-            if (!newUrl.includes('watch-history')) {
-              console.log('Recovery navigation failed. Trying alternative approach...');
-              
-              // Try using browser history API as a last resort
-              await page.evaluate(() => {
-                window.location.href = 'https://www.primevideo.com/settings/watch-history';
-              }).catch(e => {
-                console.warn('Error using browser history API:', e.message);
-              });
-              
-              // Wait for navigation to complete
-              await new Promise(resolve => setTimeout(resolve, 5000));
-            }
             
             // Get new height after recovery with error handling
             try {
@@ -1195,6 +1771,10 @@ async function scrapeWatchHistory() {
               // If we can't get the height, use a default value to continue
               currentHeight = previousHeight + 1; // Force loop to continue
             }
+            
+            // After recovery, skip a few scroll attempts to let the page stabilize
+            console.log('Pausing scrolling briefly to let page stabilize...');
+            await new Promise(resolve => setTimeout(resolve, 5000));
           } catch (recoveryError) {
             console.error('Failed to recover from scrolling error:', recoveryError.message);
             console.log('Will attempt to continue with extraction despite recovery failure');
@@ -1397,11 +1977,39 @@ async function scrapeWatchHistory() {
     
     console.log(`Found ${watchHistory.length} items in watch history`);
     
+    // Deduplicate TV show episodes to only keep the last watched episode
+    console.log('Deduplicating TV show episodes to only keep the last watched episode...');
+    const deduplicatedHistory = [];
+    const tvShowsMap = new Map(); // Map to track the latest episode for each TV show
+    
+    // First pass: identify TV shows and their latest episodes
+    for (const item of watchHistory) {
+      if (item.episode) {
+        // This is a TV show episode
+        if (!tvShowsMap.has(item.title) ||
+            new Date(parseDate(item.date).split('/').reverse().join('-')) >
+            new Date(parseDate(tvShowsMap.get(item.title).date).split('/').reverse().join('-'))) {
+          // Either first time seeing this show or more recent episode
+          tvShowsMap.set(item.title, item);
+        }
+      } else {
+        // This is a movie, always include
+        deduplicatedHistory.push(item);
+      }
+    }
+    
+    // Add the latest episode of each TV show to the deduplicated history
+    for (const [_, latestEpisode] of tvShowsMap.entries()) {
+      deduplicatedHistory.push(latestEpisode);
+    }
+    
+    console.log(`Deduplicated to ${deduplicatedHistory.length} items (removed ${watchHistory.length - deduplicatedHistory.length} duplicate TV episodes)`);
+    
     // Process each item to get metadata
     console.log('Processing items and fetching metadata...');
     const processedItems = [];
     
-    for (const item of watchHistory) {
+    for (const item of deduplicatedHistory) {
       const processedItem = await processItem(item.date, item.title, item.episode);
       processedItems.push(processedItem);
       console.log(`Processed: ${item.title} ${item.episode ? `- ${item.episode}` : ''}`);

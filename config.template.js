@@ -5,8 +5,9 @@ export default {
   simklClientSecret: 'YOUR_SIMKL_SECRET',
   tmdbApiKey: 'YOUR_TMDB_API_KEY',
   tvdbApiKey: 'YOUR_TVDB_API_KEY',
-  imdbApiKey: 'YOUR_IMDB_API_KEY',
+  // No IMDB API key needed - using free imdbapi.dev API
   malClientId: 'YOUR_MAL_CLIENT_ID',
+  malClientSecret: 'YOUR_MAL_CLIENT_SECRET',
   
   // Amazon Login Credentials
   amazon: {
@@ -26,7 +27,7 @@ export default {
     simkl: { calls: 30, perSeconds: 10 },
     tmdb: { calls: 40, perSeconds: 10 },
     tvdb: { calls: 100, perSeconds: 60 },
-    imdb: { calls: 100, perSeconds: 60 },
+    imdb: { calls: 5, perSeconds: 10 }, // imdbapi.dev has stricter rate limits
     mal: { calls: 2, perSeconds: 1 }
   }
 };

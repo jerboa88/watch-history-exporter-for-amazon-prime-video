@@ -72,7 +72,7 @@ async function runTests() {
   console.log("\nTest 2: lookupMetadata function");
   try {
     // Initialize API clients with mock values
-    imdbClient.apiKey = 'mock-imdb-key';
+    // No IMDB API key needed with imdbapi.dev
     malClient.clientId = 'mock-mal-client-id';
     
     const metadata = await lookupMetadata("Inception", "movie", "2010");

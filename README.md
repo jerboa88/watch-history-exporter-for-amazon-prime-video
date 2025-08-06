@@ -2,12 +2,19 @@
 
 A tool to export your Amazon Prime Video watch history to a CSV file compatible with [Simkl](https://simkl.com/apps/import/csv/) import format.
 
+## If you like my work
+Help me pay off my home loan –> [Donate on PayPal (paypal.me/ruggierocarlo)]
+
 ## Features
 
 - Automatically scrapes your Prime Video watch history
-- Fetches metadata from multiple sources (Simkl, TMDB, TVDB, IMDB, MyAnimeList)
+- Fetches metadata from multiple sources (Simkl, TMDB, TVDB, IMDB (using free imdbapi.dev), MyAnimeList)
 - Generates a CSV file ready for Simkl import
 - Handles movies and TV shows with proper episode formatting
+- Only includes the last watched episode for TV shows to avoid duplicates
+- Retrieves release year from Simkl/TMDB for more accurate metadata
+- Validates API keys before starting and disables failing APIs
+- Supports OAuth authentication for MyAnimeList API
 - Supports running in browser console or as a standalone Node.js application
 
 ## Prerequisites
@@ -18,9 +25,8 @@ A tool to export your Amazon Prime Video watch history to a CSV file compatible 
 - API keys for metadata services:
   - [Simkl Client ID](https://simkl.com/settings/developer/new/)
   - [TMDB API Key](https://www.themoviedb.org/settings/api)
-  - [TVDB API Key](https://thetvdb.com/api-information) (optional)
-  - [IMDB API Key](https://imdb-api.com/) (optional, no debug messages will be shown if not configured)
-  - [MyAnimeList Client ID](https://myanimelist.net/apiconfig/create) (optional, for anime, no debug messages will be shown if not configured)
+  - [TVDB API Key](https://thetvdb.com/api-information) (optional, supports v4 API)
+  - [MyAnimeList Client ID and Secret](https://myanimelist.net/apiconfig/create) (optional, for anime, no debug messages will be shown if not configured)
 
 ## Installation
 
@@ -48,8 +54,9 @@ A tool to export your Amazon Prime Video watch history to a CSV file compatible 
      simklClientSecret: 'YOUR_SIMKL_SECRET',
      tmdbApiKey: 'YOUR_TMDB_API_KEY',
      tvdbApiKey: 'YOUR_TVDB_API_KEY', // Optional
-     imdbApiKey: 'YOUR_IMDB_API_KEY', // Optional
+     // No IMDB API key needed - using free imdbapi.dev API
      malClientId: 'YOUR_MAL_CLIENT_ID', // Optional, for anime
+     malClientSecret: 'YOUR_MAL_CLIENT_SECRET', // Optional, for OAuth authentication
      
      // Amazon Login Credentials (for Node.js version)
      amazon: {
@@ -69,7 +76,7 @@ A tool to export your Amazon Prime Video watch history to a CSV file compatible 
        simkl: { calls: 30, perSeconds: 10 },
        tmdb: { calls: 40, perSeconds: 10 },
        tvdb: { calls: 100, perSeconds: 60 },
-       imdb: { calls: 100, perSeconds: 60 },
+       imdb: { calls: 5, perSeconds: 10 }, // imdbapi.dev has stricter rate limits
        mal: { calls: 2, perSeconds: 1 }
      }
    };
@@ -169,9 +176,30 @@ The generated CSV file follows the Simkl import format with the following column
   - The script limits scrolling attempts to prevent infinite loops
   - If you have a very large watch history, the extraction process may take several minutes
 - **API Rate Limits**: The script includes rate limiting, but if you have a large watch history, you might hit API rate limits. Try running the script again later to continue.
+- **API Error Handling**: The script now includes improved error handling for API calls:
+  - Graceful handling of API failures with detailed logging
+  - Automatic fallback to alternative APIs when one fails
+  - Null checks to prevent crashes when API responses are unexpected
+  - Specific handling for Simkl API errors to ensure processing continues
+  - Updated TVDB API client to use v4 API endpoints with enhanced error reporting
 - **Missing Metadata**: Some titles might not be found in the metadata sources. The script will still include these items in the CSV, but with empty ID fields.
 - **Localized Titles**: By default, the script will try to use original titles instead of localized ones for better matching with metadata sources. You can disable this by setting `useOriginalTitles: false` in your config.js file.
-- **Scrolling Issues**: If you have a large watch history, the script now uses an improved scrolling mechanism to ensure all items are loaded. It will make multiple scroll attempts and verify that all content is loaded before proceeding.
+- **Multi-language Support**: The script now supports date parsing in multiple languages:
+  - English (e.g., "January 12, 2023" or "12 January 2023")
+  - Italian (e.g., "12 gennaio 2023")
+  - Spanish (e.g., "12 marzo 2023")
+  - French (e.g., "12 février 2023")
+  - German (e.g., "12 März 2023")
+- **TV Show Episodes**: The script now only includes the most recent episode watched for each TV show to avoid duplicates in your Simkl history.
+- **Release Year**: The script retrieves the release year from Simkl/TMDB APIs for more accurate metadata, falling back to the year in the title if not available from APIs.
+- **API Key Validation**: The script validates all API keys before starting and disables any failing APIs, ensuring the best possible metadata retrieval.
+- **Scrolling Issues**: If you have a large watch history, the script now uses an improved scrolling mechanism to ensure all items are loaded:
+  - Multiple scrolling methods (keyboard, JavaScript, mouse wheel) for maximum compatibility
+  - Enhanced error handling for "Execution context was destroyed" errors
+  - Automatic recovery from navigation errors during scrolling
+  - Intelligent retry mechanism with multiple navigation approaches
+  - Reduced wait times between scrolling attempts (from 15s to 2s)
+  - Reduced number of scrolling attempts at end of page (from 10 to 3)
 
 ## License
 
@@ -181,6 +209,6 @@ MIT
 
 - [Simkl](https://simkl.com/) for their import functionality
 - [TMDB](https://www.themoviedb.org/) for their metadata API
-- [TVDB](https://thetvdb.com/) for their metadata API
-- [IMDB](https://imdb-api.com/) for their metadata API
-- [MyAnimeList](https://myanimelist.net/) for their metadata API
+- [TVDB](https://thetvdb.com/) for their metadata API (updated to support v4 API)
+- [IMDB API Dev](https://imdbapi.dev/) for their free metadata API
+- [MyAnimeList](https://myanimelist.net/) for their metadata API (supports both Client ID and OAuth authentication)
