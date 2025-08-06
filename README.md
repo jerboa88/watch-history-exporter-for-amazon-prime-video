@@ -3,7 +3,7 @@
 A tool to export your Amazon Prime Video watch history to a CSV file compatible with [Simkl](https://simkl.com/apps/import/csv/) import format.
 
 ## If you like my work
-Help me pay off my home loan –> [Donate on PayPal (paypal.me/ruggierocarlo)]
+Help me pay off my home loan –> [Donate on PayPal](https://paypal.me/ruggierocarlo)
 
 ## Features
 
