@@ -1,0 +1,5 @@
+node_modules
+export.csv
+
+# Configuration file with sensitive data
+config.js
