@@ -1,5 +1,33 @@
-node_modules
-export.csv
+# Preserved Node.js exclusions
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
 
-# Configuration file with sensitive data
-config.js
+# Essential Rust exclusions
+target/
+Cargo.lock
+
+# Build outputs
+/output/
+export.csv
+*.png
+
+# Environment/config files
+.env
+*.env
+config.local.*
+/config.js
+
+# IDE (minimal)
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+/test-results/
+/coverage/
