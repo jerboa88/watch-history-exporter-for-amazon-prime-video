@@ -21,7 +21,7 @@
 </div>
 
 
-## About
+## 👋 About
 This script runs in your browser and allows you to save your watch history from [Amazon Prime Video] to a CSV file, where it can be processed further or imported into other platforms.
 
 ### Features
@@ -44,7 +44,7 @@ This script runs in your browser and allows you to save your watch history from 
   - 繁體中文
 
 
-## Usage
+## 🕹️ Usage
 > [!CAUTION]
 > For security reasons, I do not recommend running scripts from the internet unless you understand what they are doing. If you are not a developer, I recommend reading the comments in the code and/or asking a LLM like [ChatGPT] to explain it to you.
 >
@@ -62,7 +62,7 @@ You can run the script by going to [primevideo.com/settings/watch-history], copy
 </details>
 
 
-## FAQ
+## ❓ FAQ
 
 ### Nothing shows up when I paste in the console / I get a warning when I try to paste in the console
 Some browsers prevent you from pasting code in the console because it could be malicious. This is called Paste Protection and you can read more about it on the [Chrome for Developers Blog].
@@ -82,13 +82,13 @@ If you have a default download folder set, check if the file is there.
 Otherwise, make sure "Pop-ups and redirects" and "Automatic downloads" are enabled for www.primevideo.com in your browser settings.
 
 
-## Contributing
+## 🤝 Contributing
 If you encounter any problems with the script, feel free to [create an issue].
 
 Pull requests, bug reports, translations, and other kinds of contributions are greatly appreciated. By contributing code, you agree to waive all claim of copyright to your work and release it to the public domain.
 
 
-## License
+## 🧾 License
 This project is released into the public domain. See the [LICENSE] for details. Attribution is appreciated but not required :)
 
 
