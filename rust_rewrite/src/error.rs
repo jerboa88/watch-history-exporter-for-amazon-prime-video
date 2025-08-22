@@ -17,6 +17,9 @@ pub enum AppError {
     #[error("JSON parsing error: {0}")]
     JsonError(#[from] serde_json::Error),
 
+    #[error("Semaphore acquisition error: {0}")]
+    SemaphoreError(#[from] tokio::sync::AcquireError),
+
     #[error("Browser automation error: {0}")]
     BrowserError(String),
 
@@ -25,4 +28,19 @@ pub enum AppError {
 
     #[error("Metadata lookup failed: {0}")]
     MetadataError(String),
+
+    #[error("Parsing error: {0}")]
+    ParseError(String),
+}
+
+impl From<std::num::ParseIntError> for AppError {
+    fn from(err: std::num::ParseIntError) -> Self {
+        AppError::ParseError(err.to_string())
+    }
+}
+
+impl From<tokio::task::JoinError> for AppError {
+    fn from(err: tokio::task::JoinError) -> Self {
+        AppError::MetadataError(format!("Task join error: {}", err))
+    }
 }

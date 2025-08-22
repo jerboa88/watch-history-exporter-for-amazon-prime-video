@@ -1,12 +1,24 @@
 use crate::{
     error::AppError,
-    metadata::{MetadataService, MediaType},
-    scraping::WatchHistoryItem,
+    metadata::{MetadataService, MediaType, MetadataResult},
+    models::{WatchHistoryItem, WatchStatus},
     processor::progress_tracker::ProgressTracker,
 };
 use std::collections::HashMap;
+use tokio::sync::Semaphore;
+use std::sync::Arc;
 
-pub struct HistoryProcessor;
+pub struct HistoryProcessor {
+    semaphore: Arc<Semaphore>,
+}
+
+impl Default for HistoryProcessor {
+    fn default() -> Self {
+        Self {
+            semaphore: Arc::new(Semaphore::new(5)), // Max 5 concurrent requests
+        }
+    }
+}
 
 impl HistoryProcessor {
     pub async fn process(
@@ -14,9 +26,12 @@ impl HistoryProcessor {
         metadata: &MetadataService,
         progress: &mut ProgressTracker,
     ) -> Result<Vec<ProcessedItem>, AppError> {
+        let processor = Self::default();
         let mut processed = Vec::with_capacity(items.len());
-        let mut tv_shows = HashMap::new();
+        let mut tv_shows: HashMap<String, WatchHistoryItem> = HashMap::new();
+        let mut tasks = Vec::new();
 
+        // First pass: Deduplicate TV shows and collect processing tasks
         for item in items {
             progress.log_processing(&item.title);
             
@@ -26,7 +41,6 @@ impl HistoryProcessor {
                 MediaType::Movie
             };
 
-            // For TV shows, only keep the latest episode
             if media_type == MediaType::Tv {
                 if let Some(existing) = tv_shows.get_mut(&item.title) {
                     if item.date > existing.date {
@@ -39,15 +53,74 @@ impl HistoryProcessor {
                 }
             }
 
-            // Process movie or the latest TV episode
-            let metadata = metadata.lookup(&item.title, media_type, None).await?;
-            processed.push(ProcessedItem::from_watch_history(item, metadata));
+            // Create processing task for each item
+            let item = item;
+            let metadata = Arc::new(metadata.clone());
+            let semaphore = processor.semaphore.clone();
+            let progress = progress.clone();
+            
+            tasks.push(tokio::spawn(async move {
+                let _permit = semaphore.acquire().await?;
+
+                // Retry logic (3 attempts)
+                let mut attempts = 0;
+                let mut last_error = None;
+
+                while attempts < 3 {
+                    match (*metadata).lookup(&item.title, media_type, None).await {
+                        Ok(meta) => {
+                            return Ok((item, meta));
+                        }
+                        Err(e) => {
+                            last_error = Some(e);
+                            attempts += 1;
+                            tokio::time::sleep(std::time::Duration::from_secs(attempts)).await;
+                        }
+                    }
+                }
+
+                Err(last_error.unwrap())
+            }));
         }
 
-        // Process the kept TV episodes
+        // Process TV shows
         for (_, item) in tv_shows {
-            let metadata = metadata.lookup(&item.title, MediaType::Tv, None).await?;
-            processed.push(ProcessedItem::from_watch_history(item, metadata));
+            let metadata = Arc::new(metadata.clone());
+            let semaphore = processor.semaphore.clone();
+            let progress = progress.clone();
+            
+            tasks.push(tokio::spawn(async move {
+                let _permit = semaphore.acquire().await?;
+                
+                // Retry logic for TV shows
+                let mut attempts = 0;
+                let mut last_error = None;
+                
+                while attempts < 3 {
+                    match (*metadata).lookup(&item.title, MediaType::Tv, None).await {
+                        Ok(meta) => {
+                            return Ok((item, meta));
+                        }
+                        Err(e) => {
+                            last_error = Some(e);
+                            attempts += 1;
+                            tokio::time::sleep(std::time::Duration::from_secs(attempts)).await;
+                        }
+                    }
+                }
+                
+                Err(last_error.unwrap())
+            }));
+        }
+
+        // Await all tasks
+        for task in tasks {
+            match task.await? {
+                Ok((item, metadata)) => {
+                    processed.push(ProcessedItem::from_watch_history(item, metadata));
+                }
+                Err(e) => return Err(e),
+            }
         }
 
         progress.log_processed(processed.len());
@@ -76,5 +149,163 @@ impl ProcessedItem {
             metadata,
             episode: item.episode,
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::metadata::{MetadataResult, MediaIds};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use tokio::sync::Mutex;
+
+    struct MockMetadataService {
+        call_count: AtomicUsize,
+        should_fail: Mutex<bool>,
+    }
+
+    impl MockMetadataService {
+        fn new() -> Self {
+            Self {
+                call_count: AtomicUsize::new(0),
+                should_fail: Mutex::new(false),
+            }
+        }
+
+        async fn set_fail(&self, fail: bool) {
+            *self.should_fail.lock().await = fail;
+        }
+    }
+
+    impl MockMetadataService {
+        async fn lookup(
+            &self,
+            title: &str,
+            media_type: MediaType,
+            _year: Option<i32>,
+        ) -> Result<MetadataResult, AppError> {
+            self.call_count.fetch_add(1, Ordering::SeqCst);
+
+            if *self.should_fail.lock().await {
+                return Err(AppError::MetadataError("Mock failure".to_string()));
+            }
+
+            Ok(MetadataResult {
+                ids: MediaIds {
+                    simkl: Some(format!("simkl_{}", title)),
+                    tvdb: Some(format!("tvdb_{}", title)),
+                    tmdb: Some(format!("tmdb_{}", title)),
+                    imdb: Some(format!("imdb_{}", title)),
+                    mal: Some(format!("mal_{}", title)),
+                },
+                title: title.to_string(),
+                year: Some("2020".to_string()),
+                media_type,
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn test_deduplicates_tv_episodes() {
+        let metadata = MockMetadataService::new();
+        let mut progress = ProgressTracker::new();
+        
+        let items = vec![
+            WatchHistoryItem {
+                simkl_id: None,
+                tvdb_id: None,
+                tmdb_id: None,
+                imdb_id: None,
+                mal_id: None,
+                media_type: MediaType::Tv,
+                title: "Show A".to_string(),
+                year: None,
+                episode: Some("S1E1".to_string()),
+                watch_status: WatchStatus::Completed,
+                date: "2023-01-01".to_string(),
+                rating: None,
+                memo: None,
+            },
+            WatchHistoryItem {
+                simkl_id: None,
+                tvdb_id: None,
+                tmdb_id: None,
+                imdb_id: None,
+                mal_id: None,
+                media_type: MediaType::Tv,
+                title: "Show A".to_string(),
+                year: None,
+                episode: Some("S1E2".to_string()),
+                watch_status: WatchStatus::Completed,
+                date: "2023-01-02".to_string(),
+                rating: None,
+                memo: None,
+            },
+        ];
+
+        let processed = HistoryProcessor::process(items, &metadata, &mut progress)
+            .await
+            .unwrap();
+
+        assert_eq!(processed.len(), 1);
+        assert_eq!(processed[0].date, "2023-01-02");
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_processing() {
+        let metadata = MockMetadataService::new();
+        let mut progress = ProgressTracker::new();
+        
+        let items = (0..10).map(|i| WatchHistoryItem {
+            simkl_id: None,
+            tvdb_id: None,
+            tmdb_id: None,
+            imdb_id: None,
+            mal_id: None,
+            media_type: MediaType::Movie,
+            title: format!("Movie {}", i),
+            year: None,
+            episode: None,
+            watch_status: WatchStatus::Completed,
+            date: "2023-01-01".to_string(),
+            rating: None,
+            memo: None,
+        }).collect();
+
+        let processed = HistoryProcessor::process(items, &metadata, &mut progress)
+            .await
+            .unwrap();
+
+        assert_eq!(processed.len(), 10);
+        assert_eq!(metadata.call_count.load(Ordering::SeqCst), 10);
+    }
+
+    #[tokio::test]
+    async fn test_retry_logic() {
+        let metadata = MockMetadataService::new();
+        metadata.set_fail(true).await;
+        let mut progress = ProgressTracker::new();
+        
+        let items = vec![WatchHistoryItem {
+            simkl_id: None,
+            tvdb_id: None,
+            tmdb_id: None,
+            imdb_id: None,
+            mal_id: None,
+            media_type: MediaType::Movie,
+            title: "Movie".to_string(),
+            year: None,
+            episode: None,
+            watch_status: WatchStatus::Completed,
+            date: "2023-01-01".to_string(),
+            rating: None,
+            memo: None,
+        }];
+
+        let result = HistoryProcessor::process(items, &metadata, &mut progress)
+            .await;
+
+        assert!(result.is_err());
     }
 }

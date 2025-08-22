@@ -2,11 +2,14 @@ mod clients;
 mod models;
 mod provider;
 
-use crate::config::{PriorityOrder, RateLimitConfig, SimklConfig, TmdbConfig, TvdbConfig, ImdbConfig, MalConfig};
+pub use models::{ServiceType, MediaType, MetadataResult, MediaIds, RateLimitConfig, RateLimit, PriorityOrder};
+
+// Internal imports needed for implementation
+use crate::config::{SimklConfig, TmdbConfig, TvdbConfig, MalConfig};
 use crate::error::AppError;
 use clients::{simkl::SimklClient, tmdb::TmdbClient, tvdb::TvdbClient, imdb::ImdbClient, mal::MalClient};
 use models::*;
-use provider::MetadataProvider;
+use provider::{MetadataProvider, RateLimitedProvider};
 
 pub struct MetadataService {
     providers: Vec<Box<dyn MetadataProvider>>,
@@ -19,7 +22,7 @@ impl MetadataService {
         simkl_config: SimklConfig,
         tmdb_config: TmdbConfig,
         tvdb_config: TvdbConfig,
-        imdb_config: ImdbConfig,
+        imdb_config: crate::config::ImdbConfig,
         mal_config: MalConfig,
     ) -> Self {
         let mut providers: Vec<Box<dyn MetadataProvider>> = Vec::new();
@@ -27,19 +30,19 @@ impl MetadataService {
         for service in priority_order {
             match service {
                 ServiceType::Simkl => providers.push(Box::new(
-                    SimklClient::new(simkl_config.clone(), rate_limits.simkl)
+                    SimklClient::new(simkl_config.clone(), rate_limits.simkl.clone())
                 )),
                 ServiceType::Tmdb => providers.push(Box::new(
-                    TmdbClient::new(tmdb_config.clone(), rate_limits.tmdb)
+                    TmdbClient::new(tmdb_config.clone(), rate_limits.tmdb.clone())
                 )),
                 ServiceType::Tvdb => providers.push(Box::new(
-                    TvdbClient::new(tvdb_config.clone(), rate_limits.tvdb)
+                    TvdbClient::new(tvdb_config.clone(), rate_limits.tvdb.clone())
                 )),
                 ServiceType::Imdb => providers.push(Box::new(
-                    ImdbClient::new(imdb_config.clone(), rate_limits.imdb)
+                    ImdbClient::new(imdb_config.clone(), rate_limits.imdb.clone())
                 )),
                 ServiceType::Mal => providers.push(Box::new(
-                    MalClient::new(mal_config.clone(), rate_limits.mal)
+                    MalClient::new(mal_config.clone(), rate_limits.mal.clone())
                 )),
             }
         }
@@ -53,9 +56,14 @@ impl MetadataService {
         media_type: MediaType,
         year: Option<&str>,
     ) -> Result<MetadataResult, AppError> {
+        let year_int = year.and_then(|y| y.parse().ok());
         for provider in &self.providers {
-            match provider.fetch(title, media_type, year).await {
-                Ok(result) => return Ok(result),
+            match provider.search(title, media_type, year_int).await {
+                Ok(results) => {
+                    if let Some(result) = results.into_iter().next() {
+                        return Ok(result);
+                    }
+                }
                 Err(e) => {
                     tracing::warn!(
                         "Metadata lookup failed on {}: {}",

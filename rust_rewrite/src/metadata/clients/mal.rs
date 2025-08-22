@@ -1,9 +1,9 @@
 use async_trait::async_trait;
 use reqwest::Client;
 use crate::{
-    config::{MalConfig, RateLimit},
+    config::MalConfig,
     error::AppError,
-    metadata::{MediaType, MetadataResult, MediaIds, MetadataProvider},
+    metadata::{MediaType, MetadataResult, MediaIds, MetadataProvider, RateLimit},
 };
 
 pub struct MalClient {
@@ -45,7 +45,7 @@ impl MalClient {
         }
     }
 
-    async fn search(
+    async fn search_internal(
         &mut self,
         title: &str,
     ) -> Result<Vec<MetadataResult>, AppError> {
@@ -70,7 +70,7 @@ impl MalClient {
         } else if response.status() == 401 {
             // Token expired, retry with new auth
             self.authenticate().await?;
-            self.search(title).await
+            Box::pin(self.search_internal(title)).await
         } else {
             Err(AppError::MetadataError(format!(
                 "MAL API error: {}",
@@ -79,7 +79,7 @@ impl MalClient {
         }
     }
 
-    async fn get_details(&mut self, mal_id: u32) -> Result<MediaIds, AppError> {
+    async fn get_details_internal(&mut self, mal_id: u32) -> Result<MetadataResult, AppError> {
         if self.access_token.is_none() {
             self.authenticate().await?;
         }
@@ -97,14 +97,24 @@ impl MalClient {
 
         if response.status().is_success() {
             let item: MalItemResponse = response.json().await?;
-            Ok(MediaIds {
-                mal: Some(item.id.to_string()),
-                ..Default::default()
+            let year = item.start_date
+                .as_ref()
+                .and_then(|d| d.split('-').next())
+                .map(|y| y.to_string());
+
+            Ok(MetadataResult {
+                ids: MediaIds {
+                    mal: Some(item.id.to_string()),
+                    ..Default::default()
+                },
+                title: item.title,
+                year,
+                media_type: MediaType::Tv,
             })
         } else if response.status() == 401 {
             // Token expired, retry with new auth
             self.authenticate().await?;
-            self.get_details(mal_id).await
+            Box::pin(self.get_details_internal(mal_id)).await
         } else {
             Err(AppError::MetadataError(format!(
                 "MAL API error: {}",
@@ -120,53 +130,64 @@ impl MetadataProvider for MalClient {
         "MyAnimeList"
     }
 
-    async fn fetch(
-        &mut self,
+    async fn search(
+        &self,
         title: &str,
         media_type: MediaType,
-        _year: Option<&str>,
+        _year: Option<i32>,
+    ) -> Result<Vec<MetadataResult>, AppError> {
+        if media_type != MediaType::Tv {
+            return Ok(vec![]); // MAL only supports anime
+        }
+
+        // Need mutable self for auth
+        let mut this = unsafe { std::ptr::read(self) };
+        let result = this.search_internal(title).await;
+        std::mem::forget(this);
+        result
+    }
+
+    async fn get_details(
+        &self,
+        id: &str,
+        media_type: MediaType,
     ) -> Result<MetadataResult, AppError> {
         if media_type != MediaType::Tv {
             return Err(AppError::MetadataError("MAL only supports anime".into()));
         }
 
-        let results = self.search(title).await?;
-        if let Some(result) = results.into_iter().next() {
-            let mal_id = result.ids.mal.as_ref().unwrap().parse()?;
-            let ids = self.get_details(mal_id).await?;
-            Ok(MetadataResult {
-                ids,
-                ..result
-            })
-        } else {
-            Err(AppError::MetadataError("No results found".into()))
-        }
+        let mal_id = id.parse::<u32>()?;
+        // Need mutable self for auth
+        let mut this = unsafe { std::ptr::read(self) };
+        let result = this.get_details_internal(mal_id).await;
+        std::mem::forget(this);
+        result
     }
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct MalAuthResponse {
     access_token: String,
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct MalSearchResponse {
     data: Vec<MalItem>,
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct MalItem {
     node: MalItemDetails,
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct MalItemDetails {
     id: u32,
     title: String,
     start_date: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct MalItemResponse {
     id: u32,
     title: String,

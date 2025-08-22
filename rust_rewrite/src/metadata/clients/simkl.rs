@@ -1,9 +1,9 @@
 use async_trait::async_trait;
 use reqwest::Client;
 use crate::{
-    config::{SimklConfig, RateLimit},
+    config::SimklConfig,
     error::AppError,
-    metadata::{MediaType, MetadataResult, MediaIds, MetadataProvider},
+    metadata::{MediaType, MetadataResult, MediaIds, MetadataProvider, RateLimit},
 };
 
 pub struct SimklClient {
@@ -21,36 +21,37 @@ impl SimklClient {
         }
     }
 
-    async fn search(
+    async fn search_internal(
         &self,
         title: &str,
         media_type: MediaType,
-        year: Option<&str>,
+        year: Option<i32>,
     ) -> Result<Vec<MetadataResult>, AppError> {
-        let endpoint = match media_type {
-            MediaType::Movie => "search/movie",
-            MediaType::Tv => "search/tv",
+        let type_param = match media_type {
+            MediaType::Movie => "movie",
+            MediaType::Tv => "show",
         };
 
-        let url = format!(
-            "https://api.simkl.com/{endpoint}?q={}&year={}",
-            title,
-            year.unwrap_or("")
-        );
+        let mut query = vec![
+            ("q".to_string(), title.to_string()),
+            ("type".to_string(), type_param.to_string()),
+        ];
+
+        if let Some(y) = year {
+            query.push(("year".to_string(), y.to_string()));
+        }
 
         let response = self.client
-            .get(&url)
+            .get("https://api.simkl.com/search")
+            .header("Authorization", format!("Bearer {}", self.config.client_secret))
             .header("simkl-api-key", &self.config.client_id)
+            .query(&query)
             .send()
             .await?;
 
         if response.status().is_success() {
-            let results: Vec<SimklItem> = response.json().await?;
-            Ok(results.into_iter().map(|item| {
-                let mut result: MetadataResult = item.into();
-                result.media_type = media_type;
-                result
-            }).collect())
+            let results: Vec<SimklSearchItem> = response.json().await?;
+            Ok(results.into_iter().map(|item| item.into()).collect())
         } else {
             Err(AppError::MetadataError(format!(
                 "Simkl API error: {}",
@@ -59,25 +60,32 @@ impl SimklClient {
         }
     }
 
-    async fn get_ids(&self, simkl_id: &str, media_type: MediaType) -> Result<MediaIds, AppError> {
-        let endpoint = match media_type {
+    async fn get_details_internal(
+        &self,
+        simkl_id: &str,
+        media_type: MediaType,
+    ) -> Result<MetadataResult, AppError> {
+        let type_param = match media_type {
             MediaType::Movie => "movies",
-            MediaType::Tv => "tv",
+            MediaType::Tv => "shows",
         };
 
         let url = format!(
-            "https://api.simkl.com/{endpoint}/{simkl_id}?extended=full"
+            "https://api.simkl.com/{}/{}?extended=full",
+            type_param,
+            simkl_id
         );
 
         let response = self.client
             .get(&url)
+            .header("Authorization", format!("Bearer {}", self.config.client_secret))
             .header("simkl-api-key", &self.config.client_id)
             .send()
             .await?;
 
         if response.status().is_success() {
-            let item: SimklItem = response.json().await?;
-            Ok(item.into())
+            let details: SimklDetailsResponse = response.json().await?;
+            Ok(details.into())
         } else {
             Err(AppError::MetadataError(format!(
                 "Simkl API error: {}",
@@ -93,54 +101,154 @@ impl MetadataProvider for SimklClient {
         "Simkl"
     }
 
-    async fn fetch(
+    async fn search(
         &self,
         title: &str,
         media_type: MediaType,
-        year: Option<&str>,
+        year: Option<i32>,
+    ) -> Result<Vec<MetadataResult>, AppError> {
+        self.search_internal(title, media_type, year).await
+    }
+
+    async fn get_details(
+        &self,
+        id: &str,
+        media_type: MediaType,
     ) -> Result<MetadataResult, AppError> {
-        let results = self.search(title, media_type, year).await?;
-        results.into_iter().next().ok_or_else(|| {
-            AppError::MetadataError("No results found".into())
-        })
+        self.get_details_internal(id, media_type).await
     }
 }
 
-#[derive(Deserialize)]
-struct SimklItem {
-    ids: SimklIds,
+#[derive(serde::Deserialize)]
+struct SimklSearchItem {
     title: String,
     year: Option<String>,
+    ids: SimklIds,
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct SimklIds {
-    simkl: Option<String>,
-    tvdb: Option<String>,
-    tmdb: Option<String>,
+    simkl: String,
     imdb: Option<String>,
-    mal: Option<String>,
+    tmdb: Option<String>,
+    tvdb: Option<String>,
 }
 
-impl From<SimklItem> for MetadataResult {
-    fn from(item: SimklItem) -> Self {
+#[derive(serde::Deserialize)]
+struct SimklDetailsResponse {
+    title: String,
+    year: Option<String>,
+    ids: SimklIds,
+}
+
+impl From<SimklSearchItem> for MetadataResult {
+    fn from(item: SimklSearchItem) -> Self {
         MetadataResult {
-            ids: item.ids.into(),
+            ids: MediaIds {
+                simkl: Some(item.ids.simkl),
+                imdb: item.ids.imdb,
+                tmdb: item.ids.tmdb,
+                tvdb: item.ids.tvdb,
+                ..Default::default()
+            },
             title: item.title,
             year: item.year,
-            media_type: MediaType::Movie, // Will be overridden in search results
+            media_type: MediaType::Movie, // Will be overridden
         }
     }
 }
 
-impl From<SimklIds> for MediaIds {
-    fn from(ids: SimklIds) -> Self {
-        MediaIds {
-            simkl: ids.simkl,
-            tvdb: ids.tvdb,
-            tmdb: ids.tmdb,
-            imdb: ids.imdb,
-            mal: ids.mal,
+impl From<SimklDetailsResponse> for MetadataResult {
+    fn from(details: SimklDetailsResponse) -> Self {
+        MetadataResult {
+            ids: MediaIds {
+                simkl: Some(details.ids.simkl),
+                imdb: details.ids.imdb,
+                tmdb: details.ids.tmdb,
+                tvdb: details.ids.tvdb,
+                ..Default::default()
+            },
+            title: details.title,
+            year: details.year,
+            media_type: MediaType::Movie, // Will be overridden
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mockito::{mock, Server};
+    use serde_json::json;
+
+    #[tokio::test]
+    async fn test_search_movie() {
+        let mut server = Server::new();
+        let mock_response = json!([{
+            "title": "Inception",
+            "year": "2010",
+            "ids": {
+                "simkl": "123",
+                "imdb": "tt1375666",
+                "tmdb": "12345"
+            }
+        }]);
+
+        let _m = mock("GET", "/search?q=Inception&type=movie")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(mock_response.to_string())
+            .create();
+
+        let client = SimklClient::new(
+            SimklConfig {
+                client_id: "test".to_string(),
+                client_secret: "test".to_string(),
+            },
+            RateLimit { calls: 10, per_seconds: 1 }
+        );
+
+        let results = client.search("Inception", MediaType::Movie, None)
+            .await
+            .unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].title, "Inception");
+        assert_eq!(results[0].ids.imdb, Some("tt1375666".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_get_details() {
+        let mut server = Server::new();
+        let mock_response = json!({
+            "title": "Inception",
+            "year": "2010",
+            "ids": {
+                "simkl": "123",
+                "imdb": "tt1375666",
+                "tmdb": "12345"
+            }
+        });
+
+        let _m = mock("GET", "/movies/123?extended=full")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(mock_response.to_string())
+            .create();
+
+        let client = SimklClient::new(
+            SimklConfig {
+                client_id: "test".to_string(),
+                client_secret: "test".to_string(),
+            },
+            RateLimit { calls: 10, per_seconds: 1 }
+        );
+
+        let result = client.get_details("123", MediaType::Movie)
+            .await
+            .unwrap();
+
+        assert_eq!(result.title, "Inception");
+        assert_eq!(result.ids.imdb, Some("tt1375666".to_string()));
     }
 }

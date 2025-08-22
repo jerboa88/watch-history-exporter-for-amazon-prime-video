@@ -9,7 +9,7 @@ pub enum ServiceType {
     Mal,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum MediaType {
     Movie,
     Tv,
@@ -23,7 +23,7 @@ pub struct MetadataResult {
     pub media_type: MediaType,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct MediaIds {
     pub simkl: Option<String>,
     pub tvdb: Option<String>,
@@ -41,7 +41,7 @@ pub struct RateLimitConfig {
     pub mal: RateLimit,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RateLimit {
     pub calls: u32,
     pub per_seconds: u64,

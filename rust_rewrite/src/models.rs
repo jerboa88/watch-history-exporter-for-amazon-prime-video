@@ -11,9 +11,9 @@ pub struct WatchHistoryItem {
     pub media_type: MediaType,
     pub title: String,
     pub year: Option<String>,
-    pub last_episode_watched: Option<String>,
+    pub episode: Option<String>,
     pub watch_status: WatchStatus,
-    pub watched_date: NaiveDate,
+    pub date: String,
     pub rating: Option<u8>,
     pub memo: Option<String>,
 }

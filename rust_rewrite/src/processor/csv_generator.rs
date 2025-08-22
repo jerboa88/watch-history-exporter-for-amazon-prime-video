@@ -2,7 +2,7 @@ use crate::{
     config::OutputConfig,
     error::AppError,
     metadata::{MediaIds, MediaType},
-    processor::ProcessedItem,
+    processor::history_processor::ProcessedItem,
 };
 use csv::Writer;
 use std::{fs::File, path::Path};
@@ -14,7 +14,7 @@ pub struct CsvGenerator {
 impl CsvGenerator {
     pub fn new(config: OutputConfig) -> Self {
         Self {
-            output_path: config.path,
+            output_path: config.path.to_string_lossy().to_string(),
         }
     }
 
@@ -46,16 +46,16 @@ impl CsvGenerator {
                 ids.imdb.unwrap_or_default(),
                 ids.mal.unwrap_or_default(),
                 match item.media_type {
-                    MediaType::Movie => "movie",
-                    MediaType::Tv => "tv",
+                    MediaType::Movie => "movie".to_string(),
+                    MediaType::Tv => "tv".to_string(),
                 },
                 item.title,
                 item.metadata.year.unwrap_or_default(),
                 last_ep,
-                watch_status,
+                watch_status.to_string(),
                 item.date,
-                "", // Rating (empty)
-                "", // Memo (empty)
+                "".to_string(), // Rating (empty)
+                "".to_string(), // Memo (empty)
             ])?;
         }
 

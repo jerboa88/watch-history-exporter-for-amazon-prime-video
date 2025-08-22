@@ -8,7 +8,7 @@ pub enum LoginMethod {
 }
 
 pub async fn handle_login(
-    client: &Client,
+    client: &mut Client,
     method: LoginMethod,
 ) -> Result<(), AppError> {
     match method {
@@ -19,7 +19,7 @@ pub async fn handle_login(
     }
 }
 
-async fn manual_login(client: &Client) -> Result<(), AppError> {
+async fn manual_login(client: &mut Client) -> Result<(), AppError> {
     // Navigate to Prime Video watch history
     client
         .goto("https://www.primevideo.com/settings/watch-history")
@@ -38,7 +38,7 @@ async fn manual_login(client: &Client) -> Result<(), AppError> {
 }
 
 async fn automated_login(
-    client: &Client,
+    client: &mut Client,
     email: &str,
     password: &str,
 ) -> Result<(), AppError> {
@@ -102,13 +102,14 @@ async fn automated_login(
     Ok(())
 }
 
-async fn is_logged_in(client: &Client) -> Result<bool, AppError> {
+async fn is_logged_in(client: &mut Client) -> Result<bool, AppError> {
     let current_url = client
         .current_url()
         .await
         .map_err(|e| AppError::BrowserError(e.to_string()))?;
 
-    Ok(current_url.contains("watch-history") && 
-       !current_url.contains("signin") && 
-       !current_url.contains("auth"))
+    let url_str = current_url.to_string();
+    Ok(url_str.contains("watch-history") &&
+       !url_str.contains("signin") &&
+       !url_str.contains("auth"))
 }
