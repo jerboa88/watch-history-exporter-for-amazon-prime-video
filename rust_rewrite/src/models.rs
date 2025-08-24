@@ -1,5 +1,4 @@
 use serde::{Serialize, Deserialize};
-use chrono::NaiveDate;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WatchHistoryItem {

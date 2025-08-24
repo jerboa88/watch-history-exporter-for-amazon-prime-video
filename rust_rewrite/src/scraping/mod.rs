@@ -6,7 +6,7 @@ use login::{handle_login, LoginMethod};
 use extractor::HistoryExtractor;
 use browser::BrowserController;
 
-use fantoccini::{Client, Locator};
+use fantoccini::Client;
 use crate::error::AppError;
 use crate::config::AmazonConfig;
 use std::time::Duration;

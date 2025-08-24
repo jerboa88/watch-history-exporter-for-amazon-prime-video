@@ -29,12 +29,11 @@ impl HistoryProcessor {
         let processor = Self::default();
         let mut processed = Vec::with_capacity(items.len());
         let mut tv_shows: HashMap<String, WatchHistoryItem> = HashMap::new();
-        let mut tasks = Vec::new();
 
-        // First pass: Deduplicate TV shows and collect processing tasks
+        // First pass: Deduplicate TV shows and process items
         for item in items {
             progress.log_processing(&item.title);
-            
+
             let media_type = if item.episode.is_some() {
                 MediaType::Tv
             } else {
@@ -53,73 +52,64 @@ impl HistoryProcessor {
                 }
             }
 
-            // Create processing task for each item
-            let item = item;
-            let metadata = Arc::new(metadata.clone());
-            let semaphore = processor.semaphore.clone();
-            let progress = progress.clone();
-            
-            tasks.push(tokio::spawn(async move {
-                let _permit = semaphore.acquire().await?;
+            // Process item directly without spawning
+            let _permit = processor.semaphore.acquire().await?;
 
-                // Retry logic (3 attempts)
-                let mut attempts = 0;
-                let mut last_error = None;
+            // Retry logic (3 attempts)
+            let mut attempts = 0;
+            let mut last_error = None;
 
-                while attempts < 3 {
-                    match (*metadata).lookup(&item.title, media_type, None).await {
-                        Ok(meta) => {
-                            return Ok((item, meta));
-                        }
-                        Err(e) => {
-                            last_error = Some(e);
-                            attempts += 1;
+            while attempts < 3 {
+                match metadata.lookup(&item.title, media_type, None).await {
+                    Ok(meta) => {
+                        processed.push(ProcessedItem::from_watch_history(item, meta));
+                        break;
+                    }
+                    Err(e) => {
+                        last_error = Some(e);
+                        attempts += 1;
+                        if attempts < 3 {
                             tokio::time::sleep(std::time::Duration::from_secs(attempts)).await;
                         }
                     }
                 }
+            }
 
-                Err(last_error.unwrap())
-            }));
+            if let Some(e) = last_error {
+                if attempts >= 3 {
+                    return Err(e);
+                }
+            }
         }
 
         // Process TV shows
         for (_, item) in tv_shows {
-            let metadata = Arc::new(metadata.clone());
-            let semaphore = processor.semaphore.clone();
-            let progress = progress.clone();
-            
-            tasks.push(tokio::spawn(async move {
-                let _permit = semaphore.acquire().await?;
-                
-                // Retry logic for TV shows
-                let mut attempts = 0;
-                let mut last_error = None;
-                
-                while attempts < 3 {
-                    match (*metadata).lookup(&item.title, MediaType::Tv, None).await {
-                        Ok(meta) => {
-                            return Ok((item, meta));
-                        }
-                        Err(e) => {
-                            last_error = Some(e);
-                            attempts += 1;
+            let _permit = processor.semaphore.acquire().await?;
+
+            // Retry logic for TV shows
+            let mut attempts = 0;
+            let mut last_error = None;
+
+            while attempts < 3 {
+                match metadata.lookup(&item.title, MediaType::Tv, None).await {
+                    Ok(meta) => {
+                        processed.push(ProcessedItem::from_watch_history(item, meta));
+                        break;
+                    }
+                    Err(e) => {
+                        last_error = Some(e);
+                        attempts += 1;
+                        if attempts < 3 {
                             tokio::time::sleep(std::time::Duration::from_secs(attempts)).await;
                         }
                     }
                 }
-                
-                Err(last_error.unwrap())
-            }));
-        }
+            }
 
-        // Await all tasks
-        for task in tasks {
-            match task.await? {
-                Ok((item, metadata)) => {
-                    processed.push(ProcessedItem::from_watch_history(item, metadata));
+            if let Some(e) = last_error {
+                if attempts >= 3 {
+                    return Err(e);
                 }
-                Err(e) => return Err(e),
             }
         }
 

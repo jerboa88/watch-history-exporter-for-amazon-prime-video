@@ -7,9 +7,8 @@ pub use models::{ServiceType, MediaType, MetadataResult, MediaIds, RateLimitConf
 // Internal imports needed for implementation
 use crate::config::{SimklConfig, TmdbConfig, TvdbConfig, MalConfig};
 use crate::error::AppError;
-use clients::{simkl::SimklClient, tmdb::TmdbClient, tvdb::TvdbClient, imdb::ImdbClient, mal::MalClient};
-use models::*;
-use provider::{MetadataProvider, RateLimitedProvider};
+use clients::{SimklClient, TmdbClient, TvdbClient, ImdbClient, MalClient};
+use provider::MetadataProvider;
 
 pub struct MetadataService {
     providers: Vec<Box<dyn MetadataProvider>>,

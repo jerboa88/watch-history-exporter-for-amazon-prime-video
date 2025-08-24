@@ -1,6 +1,5 @@
 use fantoccini::{Client, Locator};
 use crate::error::AppError;
-use crate::config::AmazonConfig;
 
 pub enum LoginMethod {
     Manual,
@@ -85,7 +84,7 @@ async fn automated_login(
         .map_err(|e| AppError::BrowserError(e.to_string()))?;
 
     // Handle 2FA if present
-    if let Ok(element) = client
+    if let Ok(_element) = client
         .find(Locator::Css("#auth-mfa-otpcode, .cvf-widget-input-code"))
         .await
     {

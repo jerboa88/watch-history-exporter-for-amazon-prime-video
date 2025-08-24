@@ -75,12 +75,12 @@ impl App {
         if let Some(scraper) = &mut self.scraper {
             let items = scraper.scrape_watch_history().await?;
             {
-                let mut progress = self.progress.lock().await;
+                let progress = self.progress.lock().await;
                 progress.complete("Scraping complete");
             }
             Ok(items)
         } else {
-            Err(AppError::BrowserNotInitialized)
+            Err(AppError::BROWSER_NOT_INITIALIZED)
         }
     }
 
@@ -164,7 +164,7 @@ impl App {
         let processed = HistoryProcessor::process(watch_items, &metadata_service, &mut progress_tracker).await?;
 
         {
-            let mut progress = self.progress.lock().await;
+            let progress = self.progress.lock().await;
             progress.complete("Processing complete");
         }
         Ok(processed)
@@ -177,7 +177,7 @@ impl App {
         }
         self.generator.generate(items)?;
         {
-            let mut progress = self.progress.lock().await;
+            let progress = self.progress.lock().await;
             progress.complete("CSV generated successfully");
         }
         Ok(())
@@ -185,5 +185,5 @@ impl App {
 }
 
 impl AppError {
-    pub const BrowserNotInitialized: AppError = AppError::BrowserError(String::new());
+    pub const BROWSER_NOT_INITIALIZED: AppError = AppError::BrowserError(String::new());
 }

@@ -159,8 +159,10 @@ struct TvdbSearchResponse {
 #[derive(serde::Deserialize)]
 struct TvdbSearchItem {
     id: i32,
-    seriesName: String,
-    firstAired: Option<String>,
+    #[serde(rename = "seriesName")]
+    series_name: String,
+    #[serde(rename = "firstAired")]
+    first_aired: Option<String>,
 }
 
 #[derive(serde::Deserialize)]
@@ -171,14 +173,17 @@ struct TvdbDetailsResponse {
 #[derive(serde::Deserialize)]
 struct TvdbDetailsItem {
     id: i32,
-    seriesName: String,
-    firstAired: Option<String>,
-    imdbId: Option<String>,
+    #[serde(rename = "seriesName")]
+    series_name: String,
+    #[serde(rename = "firstAired")]
+    first_aired: Option<String>,
+    #[serde(rename = "imdbId")]
+    imdb_id: Option<String>,
 }
 
 impl From<TvdbSearchItem> for MetadataResult {
     fn from(item: TvdbSearchItem) -> Self {
-        let year = item.firstAired
+        let year = item.first_aired
             .as_ref()
             .and_then(|d| d.split('-').next())
             .map(|y| y.to_string());
@@ -188,7 +193,7 @@ impl From<TvdbSearchItem> for MetadataResult {
                 tvdb: Some(item.id.to_string()),
                 ..Default::default()
             },
-            title: item.seriesName,
+            title: item.series_name,
             year,
             media_type: MediaType::Tv,
         }
@@ -197,7 +202,7 @@ impl From<TvdbSearchItem> for MetadataResult {
 
 impl From<TvdbDetailsItem> for MetadataResult {
     fn from(item: TvdbDetailsItem) -> Self {
-        let year = item.firstAired
+        let year = item.first_aired
             .as_ref()
             .and_then(|d| d.split('-').next())
             .map(|y| y.to_string());
@@ -205,10 +210,10 @@ impl From<TvdbDetailsItem> for MetadataResult {
         MetadataResult {
             ids: MediaIds {
                 tvdb: Some(item.id.to_string()),
-                imdb: item.imdbId,
+                imdb: item.imdb_id,
                 ..Default::default()
             },
-            title: item.seriesName,
+            title: item.series_name,
             year,
             media_type: MediaType::Tv,
         }

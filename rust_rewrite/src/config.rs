@@ -79,18 +79,17 @@ impl AppConfig {
             builder = builder.add_source(config::File::with_name(config_path.to_str().unwrap()));
         }
 
-        let mut config = builder.build()?;
-
         // Override specific values from CLI args
         if let Some(output_path) = &cli_args.output {
-            config.set("output.path", output_path.to_str().unwrap())?;
+            builder = builder.set_override("output.path", output_path.to_str().unwrap())?;
         }
 
+        let config = builder.build()?;
         let app_config: AppConfig = config.try_deserialize()?;
 
         // Validate the configuration
         app_config.validate().map_err(|e: validator::ValidationErrors| -> Box<dyn std::error::Error> {
-            format!("Configuration validation failed: {}", e).into()
+            Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Configuration validation failed: {}", e)))
         })?;
 
         Ok(app_config)

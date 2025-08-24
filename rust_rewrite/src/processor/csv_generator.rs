@@ -1,7 +1,7 @@
 use crate::{
     config::OutputConfig,
     error::AppError,
-    metadata::{MediaIds, MediaType},
+    metadata::MediaType,
     processor::history_processor::ProcessedItem,
 };
 use csv::Writer;

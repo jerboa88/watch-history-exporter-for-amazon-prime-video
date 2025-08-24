@@ -28,7 +28,7 @@ impl ImdbClient {
         media_type: MediaType,
         _year: Option<i32>,
     ) -> Result<Vec<MetadataResult>, AppError> {
-        let type_param = match media_type {
+        let _type_param = match media_type {
             MediaType::Movie => "movie",
             MediaType::Tv => "tvSeries",
         };
@@ -157,6 +157,7 @@ struct ImdbDetailsResponse {
 impl From<ImdbItem> for MetadataResult {
     fn from(item: ImdbItem) -> Self {
         let year = item.description
+            .as_ref()
             .and_then(|desc| {
                 desc.split('(').nth(1)
                     .and_then(|s| s.split(')').next())
