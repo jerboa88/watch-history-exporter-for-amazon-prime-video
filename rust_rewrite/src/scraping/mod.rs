@@ -103,6 +103,7 @@ impl Scraper {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn take_screenshot(&mut self, path: &str) -> Result<(), AppError> {
         self.browser.take_screenshot(path).await
     }

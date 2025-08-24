@@ -16,6 +16,7 @@ use crate::{
 };
 // Individual imports removed - using re-exports instead
 
+#[allow(dead_code)]
 pub struct Processor {
     scraper: Scraper,
     csv_gen: CsvGenerator,
@@ -23,6 +24,7 @@ pub struct Processor {
 }
 
 impl Processor {
+    #[allow(dead_code)]
     pub fn new(
         scraper: Scraper,
         output_config: OutputConfig,
@@ -34,6 +36,7 @@ impl Processor {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn run(&mut self, metadata: &MetadataService) -> Result<(), AppError> {
         self.progress.start("Starting processing");
 

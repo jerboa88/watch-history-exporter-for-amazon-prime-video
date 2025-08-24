@@ -33,6 +33,7 @@ impl ProgressTracker {
         self.pb.set_message(message.to_string());
     }
 
+    #[allow(dead_code)]
     pub fn log_scraped(&mut self, count: usize) {
         self.total_items = count;
         self.pb.set_message(format!(

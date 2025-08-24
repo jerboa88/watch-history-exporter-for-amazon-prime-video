@@ -6,6 +6,7 @@ use crate::{
     metadata::{MediaType, MetadataResult, MediaIds, MetadataProvider, RateLimit},
 };
 
+#[allow(dead_code)]
 pub struct TmdbClient {
     client: Client,
     config: TmdbConfig,

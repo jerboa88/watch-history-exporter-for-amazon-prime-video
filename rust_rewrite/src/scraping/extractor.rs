@@ -77,7 +77,7 @@ impl<'a> HistoryExtractor<'a> {
     }
 
     async fn parse_history(&mut self) -> Result<Vec<HistoryItem>, AppError> {
-        let mut history = Vec::new();
+        let history = Vec::new();
         let mut attempts = 0;
         const MAX_PARSE_ATTEMPTS: usize = 3;
 

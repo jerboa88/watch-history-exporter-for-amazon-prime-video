@@ -62,6 +62,7 @@ pub struct OutputConfig {
 }
 
 impl AppConfig {
+    #[allow(dead_code)]
     pub fn load() -> Result<Self, config::ConfigError> {
         let config = Config::builder()
             .add_source(config::File::with_name("config"))

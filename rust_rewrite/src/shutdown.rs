@@ -18,6 +18,7 @@ impl ShutdownManager {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_shutdown(&self) -> bool {
         self.shutdown_flag.load(Ordering::SeqCst)
     }

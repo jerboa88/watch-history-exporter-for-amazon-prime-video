@@ -18,6 +18,7 @@ pub struct App {
 }
 
 impl App {
+    #[allow(dead_code)]
     pub fn new() -> Result<Self, AppError> {
         let config = AppConfig::load()?;
         Self::new_with_config(config)

@@ -32,6 +32,7 @@ struct TokenBucket {
 }
 
 impl TokenBucket {
+    #[allow(dead_code)]
     fn new(capacity: f64, fill_rate: f64) -> Self {
         Self {
             tokens: capacity,
@@ -74,6 +75,7 @@ pub struct RateLimitedProvider<P: MetadataProvider> {
 }
 
 impl<P: MetadataProvider> RateLimitedProvider<P> {
+    #[allow(dead_code)]
     pub fn new(provider: P, calls: u32, per_seconds: u64) -> Self {
         let fill_rate = calls as f64 / per_seconds as f64;
         Self {

@@ -2,6 +2,7 @@ use fantoccini::{Client, ClientBuilder};
 use crate::error::AppError;
 use std::time::Duration;
 
+#[allow(dead_code)]
 pub struct BrowserController {
     client: Option<Client>,
     headless: bool,
@@ -18,7 +19,7 @@ impl BrowserController {
     }
 
     pub async fn start(&mut self) -> Result<(), AppError> {
-        let mut builder = ClientBuilder::native();
+        let builder = ClientBuilder::native();
         // Note: Headless mode would need to be configured differently based on the WebDriver
 
         self.client = Some(

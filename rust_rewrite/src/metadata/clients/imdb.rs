@@ -7,6 +7,7 @@ use crate::{
     metadata::{MediaType, MetadataResult, MediaIds, MetadataProvider, RateLimit},
 };
 
+#[allow(dead_code)]
 pub struct ImdbClient {
     client: Client,
     config: ImdbConfig,
@@ -22,6 +23,7 @@ impl ImdbClient {
         }
     }
 
+    #[allow(dead_code)]
     async fn search(
         &self,
         title: &str,

@@ -1,9 +1,11 @@
 use crate::{
     error::AppError,
     metadata::{MetadataService, MediaType, MetadataResult},
-    models::{WatchHistoryItem, WatchStatus},
+    models::WatchHistoryItem,
     processor::progress_tracker::ProgressTracker,
 };
+#[cfg(test)]
+use crate::models::WatchStatus;
 use std::collections::HashMap;
 use tokio::sync::Semaphore;
 use std::sync::Arc;
