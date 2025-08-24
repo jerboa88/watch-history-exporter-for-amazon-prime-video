@@ -179,7 +179,7 @@ impl From<SimklDetailsResponse> for MetadataResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mockito::{mock, Server};
+    use mockito::Server;
     use serde_json::json;
 
     #[tokio::test]
@@ -195,7 +195,7 @@ mod tests {
             }
         }]);
 
-        let _m = mock("GET", "/search?q=Inception&type=movie")
+        let _m = server.mock("GET", "/search?q=Inception&type=movie")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(mock_response.to_string())
@@ -231,7 +231,7 @@ mod tests {
             }
         });
 
-        let _m = mock("GET", "/movies/123?extended=full")
+        let _m = server.mock("GET", "/movies/123?extended=full")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(mock_response.to_string())

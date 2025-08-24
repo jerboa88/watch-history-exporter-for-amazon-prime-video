@@ -186,8 +186,7 @@ impl From<TvdbSearchItem> for MetadataResult {
     fn from(item: TvdbSearchItem) -> Self {
         let year = item.first_aired
             .as_ref()
-            .and_then(|d| d.split('-').next())
-            .map(|y| y.to_string());
+            .and_then(|d| d.split('-').next().map(|s| s.to_string()));
 
         MetadataResult {
             ids: MediaIds {
@@ -205,8 +204,7 @@ impl From<TvdbDetailsItem> for MetadataResult {
     fn from(item: TvdbDetailsItem) -> Self {
         let year = item.first_aired
             .as_ref()
-            .and_then(|d| d.split('-').next())
-            .map(|y| y.to_string());
+            .and_then(|d| d.split('-').next().map(|s| s.to_string()));
 
         MetadataResult {
             ids: MediaIds {
@@ -224,7 +222,7 @@ impl From<TvdbDetailsItem> for MetadataResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mockito::{mock, Server};
+    use mockito::Server;
     use serde_json::json;
 
     #[tokio::test]
@@ -232,7 +230,7 @@ mod tests {
         let mut server = Server::new();
         
         // Mock auth endpoint
-        let _m_auth = mock("POST", "/login")
+        let _m_auth = server.mock("POST", "/login")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(json!({"token": "test_token"}).to_string())
@@ -247,7 +245,7 @@ mod tests {
             }]
         });
 
-        let _m_search = mock("GET", "/search/series?name=Breaking%20Bad")
+        let _m_search = server.mock("GET", "/search/series?name=Breaking%20Bad")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_header("Authorization", "Bearer test_token")
@@ -275,7 +273,7 @@ mod tests {
         let mut server = Server::new();
         
         // Mock auth endpoint
-        let _m_auth = mock("POST", "/login")
+        let _m_auth = server.mock("POST", "/login")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(json!({"token": "test_token"}).to_string())
@@ -291,7 +289,7 @@ mod tests {
             }
         });
 
-        let _m_details = mock("GET", "/series/123")
+        let _m_details = server.mock("GET", "/series/123")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_header("Authorization", "Bearer test_token")

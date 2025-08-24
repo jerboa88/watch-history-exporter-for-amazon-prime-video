@@ -1,7 +1,7 @@
 use crate::{
     error::AppError,
-    metadata::{MetadataService, MediaType, MetadataResult},
-    models::WatchHistoryItem,
+    metadata::{MetadataService, MediaType as MetadataMediaType, MetadataResult},
+    models::{WatchHistoryItem, MediaType as ModelsMediaType},
     processor::progress_tracker::ProgressTracker,
 };
 #[cfg(test)]
@@ -9,6 +9,40 @@ use crate::models::WatchStatus;
 use std::collections::HashMap;
 use tokio::sync::Semaphore;
 use std::sync::Arc;
+
+#[async_trait::async_trait]
+pub trait MetadataLookup {
+    async fn lookup(
+        &self,
+        title: &str,
+        media_type: MetadataMediaType,
+        year: Option<&str>,
+    ) -> Result<MetadataResult, AppError>;
+}
+
+#[async_trait::async_trait]
+impl MetadataLookup for MetadataService {
+    async fn lookup(
+        &self,
+        title: &str,
+        media_type: MetadataMediaType,
+        year: Option<&str>,
+    ) -> Result<MetadataResult, AppError> {
+        MetadataService::lookup(self, title, media_type, year).await
+    }
+}
+
+#[async_trait::async_trait]
+impl MetadataLookup for &MetadataService {
+    async fn lookup(
+        &self,
+        title: &str,
+        media_type: MetadataMediaType,
+        year: Option<&str>,
+    ) -> Result<MetadataResult, AppError> {
+        MetadataService::lookup(*self, title, media_type, year).await
+    }
+}
 
 pub struct HistoryProcessor {
     semaphore: Arc<Semaphore>,
@@ -23,11 +57,14 @@ impl Default for HistoryProcessor {
 }
 
 impl HistoryProcessor {
-    pub async fn process(
+    pub async fn process<T>(
         items: Vec<WatchHistoryItem>,
-        metadata: &MetadataService,
+        metadata: &T,
         progress: &mut ProgressTracker,
-    ) -> Result<Vec<ProcessedItem>, AppError> {
+    ) -> Result<Vec<ProcessedItem>, AppError>
+    where
+        T: MetadataLookup,
+    {
         let processor = Self::default();
         let mut processed = Vec::with_capacity(items.len());
         let mut tv_shows: HashMap<String, WatchHistoryItem> = HashMap::new();
@@ -37,12 +74,12 @@ impl HistoryProcessor {
             progress.log_processing(&item.title);
 
             let media_type = if item.episode.is_some() {
-                MediaType::Tv
+                MetadataMediaType::Tv
             } else {
-                MediaType::Movie
+                MetadataMediaType::Movie
             };
 
-            if media_type == MediaType::Tv {
+            if media_type == MetadataMediaType::Tv {
                 if let Some(existing) = tv_shows.get_mut(&item.title) {
                     if item.date > existing.date {
                         *existing = item;
@@ -93,7 +130,7 @@ impl HistoryProcessor {
             let mut last_error = None;
 
             while attempts < 3 {
-                match metadata.lookup(&item.title, MediaType::Tv, None).await {
+                match metadata.lookup(&item.title, MetadataMediaType::Tv, None).await {
                     Ok(meta) => {
                         processed.push(ProcessedItem::from_watch_history(item, meta));
                         break;
@@ -123,7 +160,7 @@ impl HistoryProcessor {
 pub struct ProcessedItem {
     pub title: String,
     pub date: String,
-    pub media_type: MediaType,
+    pub media_type: ModelsMediaType,
     pub metadata: MetadataResult,
     pub episode: Option<String>,
 }
@@ -134,9 +171,9 @@ impl ProcessedItem {
             title: item.title,
             date: item.date,
             media_type: if item.episode.is_some() {
-                MediaType::Tv
+                ModelsMediaType::Tv
             } else {
-                MediaType::Movie
+                ModelsMediaType::Movie
             },
             metadata,
             episode: item.episode,
@@ -170,12 +207,13 @@ mod tests {
         }
     }
 
-    impl MockMetadataService {
+    #[async_trait::async_trait]
+    impl MetadataLookup for MockMetadataService {
         async fn lookup(
             &self,
             title: &str,
-            media_type: MediaType,
-            _year: Option<i32>,
+            media_type: MetadataMediaType,
+            _year: Option<&str>,
         ) -> Result<MetadataResult, AppError> {
             self.call_count.fetch_add(1, Ordering::SeqCst);
 
@@ -198,6 +236,18 @@ mod tests {
         }
     }
 
+    #[async_trait::async_trait]
+    impl MetadataLookup for &MockMetadataService {
+        async fn lookup(
+            &self,
+            title: &str,
+            media_type: MetadataMediaType,
+            year: Option<&str>,
+        ) -> Result<MetadataResult, AppError> {
+            MockMetadataService::lookup(*self, title, media_type, year).await
+        }
+    }
+
     #[tokio::test]
     async fn test_deduplicates_tv_episodes() {
         let metadata = MockMetadataService::new();
@@ -210,7 +260,7 @@ mod tests {
                 tmdb_id: None,
                 imdb_id: None,
                 mal_id: None,
-                media_type: MediaType::Tv,
+                media_type: ModelsMediaType::Tv,
                 title: "Show A".to_string(),
                 year: None,
                 episode: Some("S1E1".to_string()),
@@ -225,7 +275,7 @@ mod tests {
                 tmdb_id: None,
                 imdb_id: None,
                 mal_id: None,
-                media_type: MediaType::Tv,
+                media_type: ModelsMediaType::Tv,
                 title: "Show A".to_string(),
                 year: None,
                 episode: Some("S1E2".to_string()),
@@ -255,7 +305,7 @@ mod tests {
             tmdb_id: None,
             imdb_id: None,
             mal_id: None,
-            media_type: MediaType::Movie,
+            media_type: ModelsMediaType::Movie,
             title: format!("Movie {}", i),
             year: None,
             episode: None,
@@ -285,7 +335,7 @@ mod tests {
             tmdb_id: None,
             imdb_id: None,
             mal_id: None,
-            media_type: MediaType::Movie,
+            media_type: ModelsMediaType::Movie,
             title: "Movie".to_string(),
             year: None,
             episode: None,

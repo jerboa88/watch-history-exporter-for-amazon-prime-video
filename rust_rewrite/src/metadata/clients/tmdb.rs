@@ -158,8 +158,7 @@ impl From<TmdbItem> for MetadataResult {
     fn from(item: TmdbItem) -> Self {
         let title = if item.title.is_empty() { item.name } else { item.title };
         let year = item.release_date.or(item.first_air_date)
-            .and_then(|d| d.split('-').next().map(|s| s.to_string()))
-            .map(|y| y.to_string());
+            .and_then(|d| d.split('-').next().map(|s| s.to_string()));
 
         MetadataResult {
             ids: MediaIds {
@@ -170,7 +169,8 @@ impl From<TmdbItem> for MetadataResult {
             year,
             media_type: match item.media_type.as_deref() {
                 Some("tv") => MediaType::Tv,
-                _ => MediaType::Movie,
+                Some("movie") => MediaType::Movie,
+                _ => MediaType::Movie, // Default to movie if unclear
             },
         }
     }
@@ -178,10 +178,10 @@ impl From<TmdbItem> for MetadataResult {
 
 impl From<TmdbDetailsResponse> for MetadataResult {
     fn from(details: TmdbDetailsResponse) -> Self {
-        let title = details.title.clone().or(details.name.clone()).unwrap_or_default();
+        let has_title = details.title.is_some();
+        let title = details.title.or(details.name).unwrap_or_default();
         let year = details.release_date.or(details.first_air_date)
-            .and_then(|d| d.split('-').next().map(|s| s.to_string()))
-            .map(|y| y.to_string());
+            .and_then(|d| d.split('-').next().map(|s| s.to_string()));
 
         MetadataResult {
             ids: MediaIds {
@@ -192,7 +192,7 @@ impl From<TmdbDetailsResponse> for MetadataResult {
             },
             title,
             year,
-            media_type: if details.title.is_some() {
+            media_type: if has_title {
                 MediaType::Movie
             } else {
                 MediaType::Tv
@@ -204,7 +204,7 @@ impl From<TmdbDetailsResponse> for MetadataResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mockito::{mock, Server};
+    use mockito::Server;
     use serde_json::json;
 
     #[tokio::test]
@@ -220,7 +220,7 @@ mod tests {
             }]
         });
 
-        let _m = mock("GET", "/search/movie?api_key=test&query=Inception&include_adult=false")
+        let _m = server.mock("GET", "/search/movie?api_key=test&query=Inception&include_adult=false")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(mock_response.to_string())
@@ -255,7 +255,7 @@ mod tests {
             }
         });
 
-        let _m = mock("GET", "/movie/123?api_key=test&append_to_response=external_ids")
+        let _m = server.mock("GET", "/movie/123?api_key=test&append_to_response=external_ids")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(mock_response.to_string())
