@@ -19,8 +19,7 @@ Help me pay off my home loan –> [Donate on PayPal](https://paypal.me/ruggieroc
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
-- npm (comes with Node.js)
+- Rust (v1.70 or higher) - [Install Rust](https://rustup.rs/)
 - Amazon Prime Video account
 - API keys for metadata services:
   - [Simkl Client ID](https://simkl.com/settings/developer/new/)
@@ -36,65 +35,61 @@ Help me pay off my home loan –> [Donate on PayPal](https://paypal.me/ruggieroc
    cd primevideo-to-simkl-csv-exporter
    ```
 
-2. Install dependencies:
+2. Build the project:
    ```bash
-   npm install
+   cargo build --release
    ```
 
 3. Create your configuration file:
    ```bash
-   cp config.template.js config.js
+   cp config.template.json config.json
    ```
 
-4. Edit `config.js` with your API keys and Amazon credentials:
-   ```javascript
-   export default {
-     // API Keys (required)
-     simklClientId: 'YOUR_SIMKL_CLIENT_ID',
-     simklClientSecret: 'YOUR_SIMKL_SECRET',
-     tmdbApiKey: 'YOUR_TMDB_API_KEY',
-     tvdbApiKey: 'YOUR_TVDB_API_KEY', // Optional
-     // No IMDB API key needed - using free imdbapi.dev API
-     malClientId: 'YOUR_MAL_CLIENT_ID', // Optional, for anime
-     malClientSecret: 'YOUR_MAL_CLIENT_SECRET', // Optional, for OAuth authentication
-     
-     // Amazon Login Credentials (for Node.js version)
-     amazon: {
-       email: 'YOUR_AMAZON_EMAIL',
-       password: 'YOUR_AMAZON_PASSWORD'
+4. Edit `config.json` with your API keys and Amazon credentials:
+   ```json
+   {
+     "api_keys": {
+       "simkl_client_id": "YOUR_SIMKL_CLIENT_ID",
+       "simkl_client_secret": "YOUR_SIMKL_SECRET",
+       "tmdb_api_key": "YOUR_TMDB_API_KEY",
+       "tvdb_api_key": "YOUR_TVDB_API_KEY",
+       "mal_client_id": "YOUR_MAL_CLIENT_ID",
+       "mal_client_secret": "YOUR_MAL_CLIENT_SECRET"
      },
-     
-     // Output Settings (for Node.js version)
-     outputPath: './export.csv',
-     
-     // Metadata Settings
-     priorityOrder: ['simkl', 'tmdb', 'tvdb', 'imdb', 'mal'],
-     useOriginalTitles: true, // Set to true to use original titles instead of localized titles
-     
-     // Rate Limiting
-     rateLimit: {
-       simkl: { calls: 30, perSeconds: 10 },
-       tmdb: { calls: 40, perSeconds: 10 },
-       tvdb: { calls: 100, perSeconds: 60 },
-       imdb: { calls: 5, perSeconds: 10 }, // imdbapi.dev has stricter rate limits
-       mal: { calls: 2, perSeconds: 1 }
+     "amazon_credentials": {
+       "email": "YOUR_AMAZON_EMAIL",
+       "password": "YOUR_AMAZON_PASSWORD"
+     },
+     "output": {
+       "path": "./export.csv"
+     },
+     "metadata": {
+       "priority_order": ["simkl", "tmdb", "tvdb", "imdb", "mal"],
+       "use_original_titles": true
+     },
+     "rate_limiting": {
+       "simkl": { "calls": 30, "per_seconds": 10 },
+       "tmdb": { "calls": 40, "per_seconds": 10 },
+       "tvdb": { "calls": 100, "per_seconds": 60 },
+       "imdb": { "calls": 5, "per_seconds": 10 },
+       "mal": { "calls": 2, "per_seconds": 1 }
      }
-   };
+   }
    ```
 
-> **IMPORTANT**: The `config.js` file is required for both the browser and Node.js versions of the script. It contains your API keys and is gitignored to prevent accidentally committing sensitive information.
+> **IMPORTANT**: The `config.json` file contains your API keys and credentials. It is gitignored to prevent accidentally committing sensitive information.
 
 ## Usage
 
-### Running as a Node.js Application
+### Running the Application
 
 This is the recommended method as it handles everything automatically:
 
 ```bash
-npm start
+cargo run --release
 ```
 
-The script will:
+The application will:
 1. Launch a browser window
 2. Log in to your Amazon account
 3. Navigate to your Prime Video watch history
@@ -118,7 +113,7 @@ If you prefer to run the script directly in your browser:
 To run the tests:
 
 ```bash
-npm test
+cargo test
 ```
 
 This will verify:
